@@ -1,0 +1,12 @@
+run_name: "example"
+
+exit_on_invalid: true
+
+dataset:
+  cls: cvrp.dataset.xml.XmlDirDataset
+  kwargs:
+    dir: data/augerat-1995-A
+
+solver:
+  cls: cvrp.solver.cw.ClarkeWrightSolver
+  kwargs: {}
