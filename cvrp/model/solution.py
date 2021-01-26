@@ -1,5 +1,5 @@
-from typing import List, Set
-from pydantic import BaseModel
+from typing import Dict, List, Set, Any, Optional
+from pydantic import BaseModel, validator
 from enum import IntEnum
 from loguru import logger
 
@@ -23,9 +23,22 @@ class SolutionValidity(IntEnum):
     INVALID_DEPART = 4
     INVALID_ARRIVE = 5
 
+
+class SolutionMetadata(BaseModel):
+    run_time_ms: int = 0
+    extras: Optional[Dict[str, Any]] = None
+
+
 class ProblemSolution(BaseModel):
     instance_name: str
     routes: List[Route]
+    meta: Optional[SolutionMetadata] = None
+
+    @validator("meta", pre=True, always=True)
+    def default_meta(cls, v):
+        if v is None:
+            v = SolutionMetadata()
+        return v
 
     def total_cost(self, problem: ProblemInstance) -> float:
         cost = 0.

@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 
 import argparse
-from cvrp.model.solution import SolutionValidity
 import os
 
 from loguru import logger
 from typing import List
+from omegaconf import OmegaConf
+from contexttimer import Timer
 
 from cvrp.utils import load_class_from_config, load_config
 from cvrp.solver.base import ISolver
 from cvrp.dataset.base import IDataset
 from cvrp.serialize.xml import XmlSolutionSerializer
 from cvrp.serialize.yml import YamlSolutionSummarizer
+from cvrp.model.solution import SolutionValidity
 
 
 def main():
@@ -34,6 +36,9 @@ def main():
     logfile = os.path.join(result_dir, "run.log")
     logger.add(logfile)
 
+    target_config_file = os.path.join(result_dir, "config.yml")
+    OmegaConf.save(config, target_config_file, resolve=True)
+
     logger.info("Loading dataset")
     dataset: IDataset = load_class_from_config(config.dataset)
 
@@ -48,14 +53,21 @@ def main():
 
     for instance in dataset:
         logger.info(instance.name)
-        solution = solver.solve(instance)
+
+        with Timer(factor=1000, output=None) as timer:
+            solution = solver.solve(instance)
+        if solution is None:
+            logger.warning(f"No valid solution is found for instance {instance.name}")
+            continue
+
+        solution.meta.run_time_ms = timer.elapsed
         validity = solution.validate_(instance)
 
         instances.append(instance)
         solutions.append(solution)
 
         if validity != SolutionValidity.VALID:
-            logger.error(f"Solution for instance {instance.name} is not valid")
+            logger.error(f"Solution for instance {instance.name} is not valid ({validity.name})")
             if config.exit_on_invalid:
                 exit(validity.value)
 

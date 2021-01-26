@@ -20,7 +20,9 @@ class YamlSolutionSummarizer(ISolutionSummarizer):
             d = {
                 "instance_name": solution.instance_name,
                 "total_cost": solution.total_cost(instance),
-                "max_route_cost": solution.max_route_cost(instance)
+                "max_route_cost": solution.max_route_cost(instance),
+                "runtime_ms": solution.meta.run_time_ms,
+                "extras": solution.meta.extras
             }
             summaries.append(d)
 

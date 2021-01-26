@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from loguru import logger
 
 from cvrp.model.problem import ProblemInstance, Node
@@ -14,7 +14,7 @@ class ClarkeWrightSolver(ISolver):
     def __init__(self) -> None:
         pass
 
-    def solve(self, problem: ProblemInstance) -> ProblemSolution:
+    def solve(self, problem: ProblemInstance) -> Optional[ProblemSolution]:
         logger.info("Generate savings list")
         savings = self._create_savings_list(problem)
 
@@ -116,7 +116,7 @@ class ClarkeWrightSolver(ISolver):
         for node in problem.nodes:
             if node.id in (problem.depart_node_id, problem.arrive_node_id):
                 continue
-            
+
             node_id = node.id
             if node_id in assignments.keys():
                 continue

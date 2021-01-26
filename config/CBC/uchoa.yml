@@ -1,0 +1,12 @@
+run_name: "CBC_uchoa"
+
+exit_on_invalid: true
+
+dataset:
+  cls: cvrp.dataset.xml.XmlDirDataset
+  kwargs:
+    dir: data/uchoa-2014
+
+solver:
+  cls: cvrp.solver.exact.ExactPulpSolver
+  kwargs: {}
