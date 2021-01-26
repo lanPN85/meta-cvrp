@@ -9,4 +9,5 @@ dataset:
 
 solver:
   cls: cvrp.solver.exact.ExactPulpSolver
-  kwargs: {}
+  kwargs:
+    timeout_s: 900
