@@ -3,7 +3,7 @@ import pulp
 
 from typing import Optional
 from threading import Thread
-from pulp import LpProblem, LpVariable, COIN_CMD, PULP_CBC_CMD
+from pulp import LpProblem, LpVariable, PULP_CBC_CMD
 from loguru import logger
 from pulp.apis.coin_api import COIN
 from pulp.pulp import lpSum
@@ -75,16 +75,16 @@ class ExactPulpSolver(ISolver):
         )
 
     def solve(self, problem: ProblemInstance) -> Optional[ProblemSolution]:
-        logger.info("Modeling")
+        logger.debug("Modeling")
         lp_prob = self.model_problem_2(problem)
-        logger.info("Solving")
+        logger.debug("Solving")
         status = lp_prob.solve(solver=self.solver_cls(timeLimit=self.timeout_s))
 
         if status != pulp.LpStatusOptimal:
             logger.error(f"Could not solve problem optimally ({pulp.LpStatus[status]})")
             return None
 
-        logger.info("Converting")
+        logger.debug("Converting")
         solution = self.convert_solution_2(lp_prob, problem)
         return solution
 
@@ -266,11 +266,21 @@ class ExactPulpSolver(ISolver):
 
         return prob
 
+
+class ExactGurobiSolver(ExactPulpSolver):
+    def __init__(self, timeout_s) -> None:
+        super().__init__(timeout_s=timeout_s, solver_cls=pulp.GUROBI_CMD)
+
+
 def test_1():
-    instance = XmlDataset.parse_file("data/augerat-1995-A/A-n32-k05.xml")
+    instance = XmlDataset.parse_file(
+        "data/augerat-1995-A/A-n32-k05.xml"
+    )
     solver = ExactPulpSolver(timeout_s=60, solver_cls=pulp.GUROBI_CMD)
     solution = solver.solve(instance)
     print(solution)
+    validity = solution.validate_(instance)
+    print(validity.name)
 
 
 if __name__ == "__main__":

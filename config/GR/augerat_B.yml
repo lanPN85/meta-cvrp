@@ -1,0 +1,12 @@
+run_name: "GR_augerat_B"
+
+exit_on_invalid: true
+
+dataset:
+  cls: cvrp.dataset.xml.XmlDirDataset
+  kwargs:
+    dir: data/augerat-1995-B
+
+solver:
+  cls: cvrp.solver.exact.ExactGurobiSolver
+  kwargs: {}

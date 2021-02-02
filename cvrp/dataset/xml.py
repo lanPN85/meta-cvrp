@@ -62,6 +62,11 @@ class XmlDataset(IDataset):
 
     @staticmethod
     def parse_vehicle_count(name: str) -> int:
+        if "_" in name:
+            # Handle edge case for Li dataset
+            num_ = int(name.split("_")[-1])
+            return num_
+
         comp = name.split("-")[-1]
         num = comp[1:]
         return int(num)

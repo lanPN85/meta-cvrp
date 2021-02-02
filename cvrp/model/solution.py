@@ -14,6 +14,16 @@ class Route(BaseModel):
         demands = [n.demand for n in self.nodes]
         return sum(demands)
 
+    def total_cost(self, problem: ProblemInstance) -> float:
+        cost = 0.
+
+        for j, node in enumerate(self.nodes[:-1]):
+            next_node = self.nodes[j + 1]
+            path_cost = problem.get_weight(node.id, next_node.id)
+            cost += path_cost
+
+        return cost
+
 
 class SolutionValidity(IntEnum):
     VALID = 0
@@ -44,10 +54,7 @@ class ProblemSolution(BaseModel):
         cost = 0.
 
         for route in self.routes:
-            for j, node in enumerate(route.nodes[:-1]):
-                next_node = route.nodes[j + 1]
-                path_cost = problem.get_weight(node.id, next_node.id)
-                cost += path_cost
+            cost += route.total_cost(problem)
 
         return cost
 
@@ -55,11 +62,7 @@ class ProblemSolution(BaseModel):
         cost = 0.
 
         for route in self.routes:
-            route_cost = 0.
-            for j, node in enumerate(route.nodes[:-1]):
-                next_node = route.nodes[j + 1]
-                path_cost = problem.get_weight(node.id, next_node.id)
-                route_cost += path_cost
+            route_cost = route.total_cost(problem)
             cost = max(route_cost, cost)
 
         return cost
