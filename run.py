@@ -51,35 +51,47 @@ def main():
     logger.info(f"Solving {len(dataset)} instances")
     instances, solutions = [], []
 
-    for instance in dataset:
-        logger.info(instance.name)
+    try:
+        for instance in dataset:
+            logger.info(instance.name)
 
-        with Timer(factor=1000, output=None) as timer:
-            solution = solver.solve(instance)
-        if solution is None:
-            logger.warning(f"No valid solution is found for instance {instance.name}")
-            continue
+            with Timer(factor=1000, output=None) as timer:
+                solution = solver.solve(instance)
+            if solution is None:
+                logger.warning(
+                    f"No valid solution is found for instance {instance.name}"
+                )
+                continue
 
-        solution.meta.run_time_ms = timer.elapsed
-        validity = solution.validate_(instance)
+            solution.meta.run_time_ms = timer.elapsed
+            validity = solution.validate_(instance)
 
-        instances.append(instance)
-        solutions.append(solution)
+            instances.append(instance)
+            solutions.append(solution)
 
-        if validity != SolutionValidity.VALID:
-            logger.error(f"Solution for instance {instance.name} is not valid ({validity.name})")
-            if config.exit_on_invalid:
-                exit(validity.value)
+            if validity != SolutionValidity.VALID:
+                logger.error(
+                    f"Solution for instance {instance.name} is not valid ({validity.name})"
+                )
+                if config.exit_on_invalid:
+                    exit(validity.value)
 
-        logger.info(f"Saving solution")
-        xml_save_path = os.path.join(result_dir, f"{instance.name}.solution.xml")
-        with open(xml_save_path, "wb") as f:
-            xml_serializer.save_solution(solution, instance, f)
+            logger.info(f"Saving solution")
+            xml_save_path = os.path.join(result_dir, f"{instance.name}.solution.xml")
+            with open(xml_save_path, "wb") as f:
+                xml_serializer.save_solution(solution, instance, f)
+    except KeyboardInterrupt:
+        logger.error("Run interrupted")
+        print()
+        inp = input("Run summary on completed instances?(y/N) ")
+        if inp.lower() != "y":
+            return
 
     logger.info("Summarizing")
     summary_path = os.path.join(result_dir, "summary.yml")
     with open(summary_path, "wb") as f:
         summarizer.summarize_solutions(solutions, instances, f)
+
 
 def get_next_version(dir: str) -> int:
     version = 0
