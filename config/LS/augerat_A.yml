@@ -8,6 +8,7 @@ dataset:
     dir: data/augerat-1995-A
 
 solver:
-  cls: cvrp.solver.ls.LocalSearchSolver
+  cls: cvrp.solver.ls.solve.LocalSearchSolver
   kwargs:
     max_iters: 100
+    early_stop: 10

@@ -15,7 +15,7 @@ class Route(BaseModel):
         return sum(demands)
 
     def total_cost(self, problem: ProblemInstance) -> float:
-        cost = 0.
+        cost = 0.0
 
         for j, node in enumerate(self.nodes[:-1]):
             next_node = self.nodes[j + 1]
@@ -23,6 +23,19 @@ class Route(BaseModel):
             cost += path_cost
 
         return cost
+
+    def insert_at(self, index: int, nodes: List[Node]):
+        p1 = self.nodes[:index]
+        p2 = self.nodes[index:]
+        self.nodes = p1 + nodes + p2
+
+    def replace_from(self, index: int, nodes: List[Node]) -> List[Node]:
+        replace_len = len(nodes)
+        p1 = self.nodes[:index]
+        p2 = self.nodes[index : index + replace_len]
+        p3 = self.nodes[index + replace_len :]
+        self.nodes = p1 + nodes + p3
+        return p2
 
 
 class SolutionValidity(IntEnum):
@@ -51,7 +64,7 @@ class ProblemSolution(BaseModel):
         return v
 
     def total_cost(self, problem: ProblemInstance) -> float:
-        cost = 0.
+        cost = 0.0
 
         for route in self.routes:
             cost += route.total_cost(problem)
@@ -59,7 +72,7 @@ class ProblemSolution(BaseModel):
         return cost
 
     def max_route_cost(self, problem: ProblemInstance) -> float:
-        cost = 0.
+        cost = 0.0
 
         for route in self.routes:
             route_cost = route.total_cost(problem)
@@ -69,18 +82,21 @@ class ProblemSolution(BaseModel):
 
     def validate_(self, problem: ProblemInstance) -> SolutionValidity:
         # Check if all nodes are covered
-        covered_node_ids: Set[str] = set([
-            problem.depart_node_id,
-            problem.arrive_node_id
-        ])
+        covered_node_ids: Set[str] = set(
+            [problem.depart_node_id, problem.arrive_node_id]
+        )
 
         for route in self.routes:
             if route.nodes[0].id != problem.depart_node_id:
-                logger.error(f"Route {route.id} starts with invalid node {route.nodes[0].id}")
+                logger.error(
+                    f"Route {route.id} starts with invalid node {route.nodes[0].id}"
+                )
                 return SolutionValidity.INVALID_DEPART
 
             if route.nodes[-1].id != problem.arrive_node_id:
-                logger.error(f"Route {route.id} ends with invalid node {route.nodes[0].id}")
+                logger.error(
+                    f"Route {route.id} ends with invalid node {route.nodes[0].id}"
+                )
                 return SolutionValidity.INVALID_ARRIVE
 
             # logger.debug(f"{route.id}: {[n.id for n in route.nodes]}")
@@ -91,7 +107,9 @@ class ProblemSolution(BaseModel):
                 covered_node_ids.add(node.id)
 
         if len(covered_node_ids) != problem.num_nodes:
-            logger.error(f"Only {len(covered_node_ids)}/{problem.num_nodes} nodes covered")
+            logger.error(
+                f"Only {len(covered_node_ids)}/{problem.num_nodes} nodes covered"
+            )
             return SolutionValidity.NODE_MISSING
 
         # Check if any routes exceed capacity
