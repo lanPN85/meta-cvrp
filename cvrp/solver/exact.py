@@ -1,5 +1,5 @@
-from genericpath import exists
 import pulp
+import os
 
 from typing import Optional
 from threading import Thread
@@ -15,18 +15,20 @@ from cvrp.dataset.xml import XmlDataset
 
 
 class ExactPulpSolver(ISolver):
-    def __init__(self, timeout_s=600,
-        solver_cls=PULP_CBC_CMD
+    def __init__(
+        self, timeout_s=600, solver_cls=PULP_CBC_CMD, logdir=None, **solver_args
     ) -> None:
-        self.solver_cls=solver_cls
+        self.solver_args = solver_args
+        self.solver_cls = solver_cls
         self.timeout_s = timeout_s
+
+        super().__init__(logdir)
 
     def convert_solution(self, lp_prob: LpProblem) -> ProblemSolution:
         raise NotImplementedError
 
     def convert_solution_2(
-        self, lp_prob: LpProblem,
-        problem: ProblemInstance
+        self, lp_prob: LpProblem, problem: ProblemInstance
     ) -> ProblemSolution:
         routes = []
         route_count = 1
@@ -62,23 +64,26 @@ class ExactPulpSolver(ISolver):
                     nodes.append(problem.arrive_node)
                     break
 
-            route = Route(
-                id=str(route_count),
-                nodes=nodes
-            )
+            route = Route(id=str(route_count), nodes=nodes)
             routes.append(route)
             route_count += 1
 
-        return ProblemSolution(
-            instance_name=problem.name,
-            routes=routes
-        )
+        return ProblemSolution(instance_name=problem.name, routes=routes)
 
     def solve(self, problem: ProblemInstance) -> Optional[ProblemSolution]:
         logger.debug("Modeling")
         lp_prob = self.model_problem_2(problem)
+
+        log_path = None
+        if self.logdir is not None:
+            log_path = os.path.join(self.logdir, f"{problem.name}.solver.log")
+
+        solver = self.solver_cls(
+            timeLimit=self.timeout_s, logPath=log_path, **self.solver_args
+        )
+
         logger.debug("Solving")
-        status = lp_prob.solve(solver=self.solver_cls(timeLimit=self.timeout_s))
+        status = lp_prob.solve(solver=solver)
 
         if status != pulp.LpStatusOptimal:
             logger.error(f"Could not solve problem optimally ({pulp.LpStatus[status]})")
@@ -268,14 +273,17 @@ class ExactPulpSolver(ISolver):
 
 
 class ExactGurobiSolver(ExactPulpSolver):
-    def __init__(self, timeout_s) -> None:
-        super().__init__(timeout_s=timeout_s, solver_cls=pulp.GUROBI_CMD)
+    def __init__(self, timeout_s, threads=1) -> None:
+        super().__init__(
+            timeout_s=timeout_s,
+            solver_cls=pulp.GUROBI_CMD,
+            threads=threads,
+            options=[("TimeLimit", str(timeout_s))],
+        )
 
 
 def test_1():
-    instance = XmlDataset.parse_file(
-        "data/augerat-1995-A/A-n32-k05.xml"
-    )
+    instance = XmlDataset.parse_file("data/augerat-1995-A/A-n32-k05.xml")
     solver = ExactPulpSolver(timeout_s=60, solver_cls=pulp.GUROBI_CMD)
     solution = solver.solve(instance)
     print(solution)

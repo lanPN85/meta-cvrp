@@ -34,7 +34,7 @@ def main():
     logger.info(f"Saving results to {result_dir}")
 
     logfile = os.path.join(result_dir, "run.log")
-    logger.add(logfile)
+    logger.add(logfile, level="INFO")
 
     target_config_file = os.path.join(result_dir, "config.yml")
     OmegaConf.save(config, target_config_file, resolve=True)
@@ -43,7 +43,7 @@ def main():
     dataset: IDataset = load_class_from_config(config.dataset)
 
     logger.info("Loading solver")
-    solver: ISolver = load_class_from_config(config.solver)
+    solver: ISolver = load_class_from_config(config.solver, logdir=result_dir)
 
     xml_serializer = XmlSolutionSerializer()
     summarizer = YamlSolutionSummarizer()

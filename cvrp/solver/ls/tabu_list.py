@@ -8,6 +8,9 @@ class TabuList:
         self.__index: Set[str] = set()
 
     def add_all(self, items: List[str]):
+        if len(items) > self.capacity:
+            items = items[len(items) - self.capacity :]
+
         for item in items:
             self.add(item)
 

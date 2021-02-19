@@ -1,6 +1,6 @@
 run_name: "GR_augerat_A"
 
-exit_on_invalid: true
+exit_on_invalid: false
 
 dataset:
   cls: cvrp.dataset.xml.XmlDirDataset
@@ -10,4 +10,5 @@ dataset:
 solver:
   cls: cvrp.solver.exact.ExactGurobiSolver
   kwargs:
-    timeout_s: 900
+    timeout_s: 3600
+    threads: 2

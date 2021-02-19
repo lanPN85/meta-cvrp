@@ -5,13 +5,13 @@ from omegaconf import OmegaConf
 from loguru import logger
 
 
-def load_class_from_config(conf):
+def load_class_from_config(conf, **kwargs):
     logger.info(str(conf.cls))
 
     clazz = pydoc.locate(conf.cls)
     if clazz is None:
         raise ValueError(f"Cannot find class {conf.cls}")
-    return clazz(**conf.kwargs)
+    return clazz(**conf.kwargs, **kwargs)
 
 
 def load_config(paths: List[str]):

@@ -1,4 +1,5 @@
 import random
+import time
 
 from typing import Any, Dict, Optional, List
 from loguru import logger
@@ -24,12 +25,16 @@ class LocalSearchSolver(ISolver):
         max_neighbor_size=1000,
         with_tabu=True,
         tabu_size=100,
+        timeout_s=None,
+        operators=("relocate", "2opt*"),
     ) -> None:
         self.max_iters = max_iters
         self.early_stop = early_stop
         self.max_neighbor_size = max_neighbor_size
         self.with_tabu = with_tabu
         self._tabu_list = TabuList(tabu_size)
+        self.timeout_s = timeout_s
+        self.operators = set(operators)
 
         super().__init__()
 
@@ -49,6 +54,8 @@ class LocalSearchSolver(ISolver):
         non_improve_count = 0
         extras: Dict[str, Any] = {"iterations": 0, "fitness": []}
 
+        start_time = time.time()
+
         for iter in range(self.max_iters):
             logger.debug(f"Iter {iter}. Best fitness: {best_fitness}")
             logger.debug("Creating neighbors")
@@ -56,18 +63,20 @@ class LocalSearchSolver(ISolver):
             neighbors = self._create_neighbors(current_solution, problem)
             logger.debug(f"Neighborhood size: {len(neighbors)}")
 
-            # Remove neighbors in tabu list
-            if self.with_tabu:
-                neighbors = list(
-                    filter(
-                        lambda x: not self._tabu_list.contains(x.move_key), neighbors
-                    )
-                )
-                logger.debug(f"Filtered neighborhood size: {len(neighbors)}")
-
             if self.max_neighbor_size > 0 and len(neighbors) > self.max_neighbor_size:
                 logger.debug(f"Sampling {self.max_neighbor_size} neighbors")
                 neighbors = random.sample(neighbors, self.max_neighbor_size)
+
+            def _is_not_tabu(n: Neighbor):
+                return (
+                    not self._tabu_list.contains(n.move_key)
+                    or n.solution.total_cost(problem) < iter_best_fitness
+                )
+
+            # Remove neighbors in tabu list
+            if self.with_tabu:
+                neighbors = list(filter(_is_not_tabu, neighbors))
+                logger.debug(f"Filtered neighborhood size: {len(neighbors)}")
 
             # Add neighbors to tabu list
             if self.with_tabu:
@@ -100,10 +109,18 @@ class LocalSearchSolver(ISolver):
             extras["iterations"] = iter + 1
             extras["fitness"].append(current_fitness)
 
+            # Check early stop
             if self.early_stop > 0 and non_improve_count >= self.early_stop:
                 logger.warning(
                     f"Fitness did not improve over {non_improve_count} iterations. Stopping"
                 )
+                break
+
+            # Check time limit
+            elapsed = time.time() - start_time
+            logger.debug(f"Elapsed time: {elapsed:.2f}s")
+            if self.timeout_s is not None and elapsed >= self.timeout_s:
+                logger.warning("Time limit exceeded. Stopping")
                 break
 
         meta = SolutionMetadata(extras=extras)
@@ -115,11 +132,17 @@ class LocalSearchSolver(ISolver):
     ) -> List[Neighbor]:
         neighbors: List[Neighbor] = []
 
-        logger.debug(f"Using relocate")
-        neighbors.extend(self._relocate(solution, problem))
+        if "relocate" in self.operators:
+            logger.debug(f"Using relocate")
+            neighbors.extend(self._relocate(solution, problem))
 
-        logger.debug(f"Using 2-opt*")
-        neighbors.extend(self._2opt_star(solution, problem))
+        if "2opt*" in self.operators:
+            logger.debug(f"Using 2-opt*")
+            neighbors.extend(self._2opt_star(solution, problem))
+
+        if "oropt" in self.operators:
+            logger.debug("Using or-opt")
+            neighbors.extend(self._or_opt(solution, problem))
 
         return neighbors
 
