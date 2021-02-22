@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import sys
 
 from loguru import logger
 from typing import List
@@ -16,16 +17,7 @@ from cvrp.serialize.yml import YamlSolutionSummarizer
 from cvrp.model.solution import SolutionValidity
 
 
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("-c", "--config", action="append", default=[])
-
-    args = parser.parse_args()
-
-    logger.info("Loading config")
-    config = load_config(args.config)
-
+def run(config) -> bool:
     result_dir = os.path.join("results", config.run_name)
     os.makedirs(result_dir, exist_ok=True)
     version = get_next_version(result_dir)
@@ -51,8 +43,10 @@ def main():
     logger.info(f"Solving {len(dataset)} instances")
     instances, solutions = [], []
 
+    is_interrupted = False
+
     try:
-        for instance in dataset:
+        for instance in dataset:  # type: ignore
             logger.info(instance.name)
 
             with Timer(factor=1000, output=None) as timer:
@@ -63,7 +57,7 @@ def main():
                 )
                 continue
 
-            solution.meta.run_time_ms = timer.elapsed
+            solution.meta.run_time_ms = timer.elapsed  # type: ignore
             validity = solution.validate_(instance)
 
             instances.append(instance)
@@ -81,16 +75,43 @@ def main():
             with open(xml_save_path, "wb") as f:
                 xml_serializer.save_solution(solution, instance, f)
     except KeyboardInterrupt:
+        is_interrupted = True
         logger.error("Run interrupted")
         print()
         inp = input("Run summary on completed instances?(y/N) ")
         if inp.lower() != "y":
-            return
+            return is_interrupted
 
     logger.info("Summarizing")
     summary_path = os.path.join(result_dir, "summary.yml")
     with open(summary_path, "wb") as f:
         summarizer.summarize_solutions(solutions, instances, f)
+    return is_interrupted
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-c", "--config", action="append", default=[])
+    parser.add_argument(
+        "-t", type=int, default=1, help="Number of times to run. Defaults to 1"
+    )
+
+    args = parser.parse_args()
+
+    logger.info("Loading config")
+    config = load_config(args.config)
+
+    for i in range(args.t):
+        logger.info(f"Run {i}")
+        interrupt = run(config)
+        logger.remove()
+        logger.add(sys.stderr)
+
+        if interrupt:
+            inp = input("Abort next runs? (y/N) ")
+            if inp.lower() == "y":
+                break
 
 
 def get_next_version(dir: str) -> int:

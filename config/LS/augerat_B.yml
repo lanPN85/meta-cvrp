@@ -1,11 +1,11 @@
-run_name: "LS_augerat_A"
+run_name: "LS_augerat_B"
 
 exit_on_invalid: true
 
 dataset:
   cls: cvrp.dataset.xml.XmlDirDataset
   kwargs:
-    dir: data/augerat-1995-A
+    dir: data/augerat-1995-B
 
 solver:
   cls: cvrp.solver.ls.solve.LocalSearchSolver

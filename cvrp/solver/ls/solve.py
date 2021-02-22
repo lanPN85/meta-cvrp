@@ -5,7 +5,12 @@ from typing import Any, Dict, Optional, List
 from loguru import logger
 from pydantic import BaseModel
 
-from cvrp.model.solution import ProblemSolution, SolutionMetadata
+from cvrp.model.solution import (
+    ProblemSolution,
+    Route,
+    SolutionMetadata,
+    SolutionValidity,
+)
 from cvrp.model.problem import ProblemInstance
 from cvrp.solver.base import ISolver
 from cvrp.solver.cw import ClarkeWrightSolver
@@ -26,7 +31,8 @@ class LocalSearchSolver(ISolver):
         with_tabu=True,
         tabu_size=100,
         timeout_s=None,
-        operators=("relocate", "2opt*"),
+        operators=("relocate", "2-opt*", "or-opt"),
+        **kwargs,
     ) -> None:
         self.max_iters = max_iters
         self.early_stop = early_stop
@@ -36,7 +42,7 @@ class LocalSearchSolver(ISolver):
         self.timeout_s = timeout_s
         self.operators = set(operators)
 
-        super().__init__()
+        super().__init__(**kwargs)
 
     def solve(self, problem: ProblemInstance) -> Optional[ProblemSolution]:
         logger.debug("Using CW for initial solution")
@@ -57,6 +63,9 @@ class LocalSearchSolver(ISolver):
         start_time = time.time()
 
         for iter in range(self.max_iters):
+            iter_best_fitness = float("inf")
+            iter_best_cand = None
+
             logger.debug(f"Iter {iter}. Best fitness: {best_fitness}")
             logger.debug("Creating neighbors")
 
@@ -70,7 +79,7 @@ class LocalSearchSolver(ISolver):
             def _is_not_tabu(n: Neighbor):
                 return (
                     not self._tabu_list.contains(n.move_key)
-                    or n.solution.total_cost(problem) < iter_best_fitness
+                    or n.solution.total_cost(problem) < best_fitness
                 )
 
             # Remove neighbors in tabu list
@@ -84,8 +93,7 @@ class LocalSearchSolver(ISolver):
                 self._tabu_list.add_all([n.move_key for n in neighbors])
 
             candidates = [n.solution for n in neighbors]
-            iter_best_fitness = float("inf")
-            iter_best_cand = None
+
             for cand in candidates:
                 fitness = cand.total_cost(problem)
                 if fitness < iter_best_fitness:
@@ -136,11 +144,11 @@ class LocalSearchSolver(ISolver):
             logger.debug(f"Using relocate")
             neighbors.extend(self._relocate(solution, problem))
 
-        if "2opt*" in self.operators:
+        if "2-opt*" in self.operators:
             logger.debug(f"Using 2-opt*")
             neighbors.extend(self._2opt_star(solution, problem))
 
-        if "oropt" in self.operators:
+        if "or-opt" in self.operators:
             logger.debug("Using or-opt")
             neighbors.extend(self._or_opt(solution, problem))
 
@@ -152,11 +160,48 @@ class LocalSearchSolver(ISolver):
         neighbors: List[Neighbor] = []
 
         # Iterate each pair of routes
-        for i, route1 in enumerate(solution.routes[:-1]):
+        for i, route1 in enumerate(solution.routes):
+            if len(route1.nodes) < 5:
+                continue
             d1 = route1.total_demand()
-            for j, route2 in enumerate(solution.routes[i:]):
+            for j, route2 in enumerate(solution.routes):
+                if i == j:
+                    continue
                 d2 = route2.total_demand()
-                # TODO Implement
+
+                for i1, n1 in enumerate(route1.nodes[1:-3]):
+                    max_sigma = len(route1.nodes) - i1 - 2
+                    sigma = random.randrange(2, max_sigma)
+                    segment = route1.nodes[i1 + 1 : i1 + sigma + 1]
+                    segment_route = Route(id="", nodes=segment)
+
+                    # If the move causes demand violation, skip
+                    if d2 + segment_route.total_demand() > problem.vehicle_capacity:
+                        continue
+
+                    for i2, n2 in enumerate(route2.nodes[1:-1]):
+                        new_solution = solution.copy(deep=True)
+                        new_route1 = new_solution.routes[i]
+                        new_route2 = new_solution.routes[j]
+
+                        # Cut the segment from the first route
+                        new_route1.nodes = (
+                            new_route1.nodes[: i1 + 1]
+                            + new_route1.nodes[i1 + sigma + 1 :]
+                        )
+                        # Add to the second route
+                        new_route2.nodes = (
+                            new_route2.nodes[: i2 + 1]
+                            + segment
+                            + new_route2.nodes[i2 + 1 :]
+                        )
+
+                        neighbors.append(
+                            Neighbor(
+                                solution=new_solution,
+                                move_key=f"or-opt/{n1.id}_{sigma}_{n2.id}",
+                            )
+                        )
 
         return neighbors
 

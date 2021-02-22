@@ -1,18 +1,18 @@
-run_name: "LS_augerat_A"
+run_name: "LS_uchoa"
 
 exit_on_invalid: true
 
 dataset:
   cls: cvrp.dataset.xml.XmlDirDataset
   kwargs:
-    dir: data/augerat-1995-A
+    dir: data/uchoa-2014
 
 solver:
   cls: cvrp.solver.ls.solve.LocalSearchSolver
   kwargs:
-    max_iters: 300
+    max_iters: 400
     early_stop: 10
-    timeout_s: 900
+    timeout_s: 1800
     max_neighbor_size: 2000
     tabu_size: 300
     operators:
