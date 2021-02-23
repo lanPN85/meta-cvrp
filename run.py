@@ -73,7 +73,7 @@ def run(config) -> bool:
             logger.info(f"Saving solution")
             xml_save_path = os.path.join(result_dir, f"{instance.name}.solution.xml")
             with open(xml_save_path, "wb") as f:
-                xml_serializer.save_solution(solution, instance, f)
+                xml_serializer.save_solution(solution, instance, f)  # type: ignore
     except KeyboardInterrupt:
         is_interrupted = True
         logger.error("Run interrupted")
@@ -85,7 +85,7 @@ def run(config) -> bool:
     logger.info("Summarizing")
     summary_path = os.path.join(result_dir, "summary.yml")
     with open(summary_path, "wb") as f:
-        summarizer.summarize_solutions(solutions, instances, f)
+        summarizer.summarize_solutions(solutions, instances, f)  # type: ignore
     return is_interrupted
 
 
