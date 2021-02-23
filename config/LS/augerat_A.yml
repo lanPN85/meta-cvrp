@@ -11,7 +11,7 @@ solver:
   cls: cvrp.solver.ls.solve.LocalSearchSolver
   kwargs:
     max_iters: 300
-    early_stop: 10
+    early_stop: 25
     timeout_s: 900
     max_neighbor_size: 2000
     tabu_size: 300

@@ -109,8 +109,8 @@ def main():
         logger.add(sys.stderr)
 
         if interrupt:
-            inp = input("Abort next runs? (y/N) ")
-            if inp.lower() == "y":
+            inp = input("Abort next runs? (Y/n) ")
+            if inp.lower() != "n":
                 break
 
 

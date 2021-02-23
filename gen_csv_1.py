@@ -21,13 +21,14 @@ def main():
     parser.add_argument(
         "-i2", required=True, help="Path to the local search result folder"
     )
+    parser.add_argument("-i3", required=True, help="Path to the CBC result folder")
     parser.add_argument("-v1", default=0, type=int, help="CW version")
     parser.add_argument(
         "-v2",
         default="0,1,2,3,4,5,6,7,8,9",
         help="Local search versions, separated by commas",
     )
-    parser.add_argument("-m", "--metric", choices=["cost", "runtime"], default="cost")
+    parser.add_argument("-v3", default=0, type=int, help="CBC version")
 
     args = parser.parse_args()
 
@@ -41,8 +42,22 @@ def main():
     cw_summary_index = create_summary_index(cw_summary["summary"])
     cw_metrics = {}
     for name, inst in cw_summary_index.items():
-        total_cost = inst["total_cost"]
         cw_metrics[name] = {
+            "total_cost": inst["total_cost"],
+            "runtime": inst["runtime_ms"],
+        }
+
+    # Calculate metrics for CBC
+    logger.info("Calculating CBC metrics")
+    cbc_result_dir = os.path.join(args.i3, f"version_{args.v3}")
+    cbc_summary_path = os.path.join(cbc_result_dir, "summary.yml")
+    with open(cbc_summary_path, "rt") as f:
+        cbc_summary = yaml.full_load(f)
+
+    cbc_summary_index = create_summary_index(cbc_summary["summary"])
+    cbc_metrics = {}
+    for name, inst in cbc_summary_index.items():
+        cbc_metrics[name] = {
             "total_cost": inst["total_cost"],
             "runtime": inst["runtime_ms"],
         }
@@ -71,22 +86,18 @@ def main():
     instance_names.sort()
 
     logger.info("Writing file")
-    HEADERS = ("Instance", "Clarke-Wright", "Tabu search")
+    HEADERS = ("Instance", "Clarke-Wright", "Tabu search", "CBC")
     with open(args.output, "wt") as f:
         writer = csv.writer(f)
         writer.writerow(HEADERS)
         for name in instance_names:
-            key_name = ""
-            if args.metric == "cost":
-                key_name = "total_cost"
-                cw_metric = f"{cw_metrics[name][key_name]:.2f}"
-                ls_metric = f"{ls_metrics[name][key_name]:.2f}"
-            elif args.metric == "runtime":
-                key_name = "runtime"
-                cw_metric = f"{cw_metrics[name][key_name] / 1000:.2f}s"
-                ls_metric = f"{ls_metrics[name][key_name] / 1000:.2f}s"
+            key_name = "total_cost"
+            cw_metric = f"{cw_metrics[name][key_name]:.2f}"
+            ls_metric = f"{ls_metrics[name][key_name]:.2f}"
+            cbc_inst = cbc_metrics.get(name)
+            cbc_metric = "" if cbc_inst is None else f"{cbc_inst[key_name]:.2f}"
 
-            writer.writerow([name, cw_metric, ls_metric])
+            writer.writerow([name, cw_metric, ls_metric, cbc_metric])
 
 
 if __name__ == "__main__":

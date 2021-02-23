@@ -1,7 +1,7 @@
 import random
 import time
 
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Set
 from loguru import logger
 from pydantic import BaseModel
 
@@ -19,7 +19,7 @@ from .tabu_list import TabuList
 
 class Neighbor(BaseModel):
     solution: ProblemSolution
-    move_key: str
+    move_keys: Set[str]
 
 
 class LocalSearchSolver(ISolver):
@@ -32,13 +32,14 @@ class LocalSearchSolver(ISolver):
         tabu_size=100,
         timeout_s=None,
         operators=("relocate", "2-opt*", "or-opt"),
+        tabu_expire=3,
         **kwargs,
     ) -> None:
         self.max_iters = max_iters
         self.early_stop = early_stop
         self.max_neighbor_size = max_neighbor_size
         self.with_tabu = with_tabu
-        self._tabu_list = TabuList(tabu_size)
+        self._tabu_list = TabuList(tabu_size, tabu_expire)
         self.timeout_s = timeout_s
         self.operators = set(operators)
 
@@ -78,7 +79,7 @@ class LocalSearchSolver(ISolver):
 
             def _is_not_tabu(n: Neighbor):
                 return (
-                    not self._tabu_list.contains(n.move_key)
+                    not self._tabu_list.intersects(n.move_keys)
                     or n.solution.total_cost(problem) < best_fitness
                 )
 
@@ -90,7 +91,8 @@ class LocalSearchSolver(ISolver):
             # Add neighbors to tabu list
             if self.with_tabu:
                 logger.debug("Updating tabu list")
-                self._tabu_list.add_all([n.move_key for n in neighbors])
+                self._tabu_list.add_sets([n.move_keys for n in neighbors])
+                self._tabu_list.step()
 
             candidates = [n.solution for n in neighbors]
 
@@ -199,7 +201,7 @@ class LocalSearchSolver(ISolver):
                         neighbors.append(
                             Neighbor(
                                 solution=new_solution,
-                                move_key=f"or-opt/{n1.id}_{sigma}_{n2.id}",
+                                move_keys=set([f"or-opt/{n1.id}", f"or-opt/{n2.id}"]),
                             )
                         )
 
@@ -233,7 +235,10 @@ class LocalSearchSolver(ISolver):
                         id_list = sorted([n1.id, n2.id])
                         id_str = "_".join(id_list)
                         neighbors.append(
-                            Neighbor(solution=new_solution, move_key=f"2opt*/{id_str}")
+                            Neighbor(
+                                solution=new_solution,
+                                move_keys=set([f"2opt*/{n1.id}", f"2opt*/{n2.id}"]),
+                            )
                         )
 
         return neighbors
@@ -264,7 +269,11 @@ class LocalSearchSolver(ISolver):
                     neighbors.append(
                         Neighbor(
                             solution=new_solution_1,
-                            move_key=f"relocate/{n1.id}_{n2.id}",
+                            move_keys=set(
+                                [
+                                    f"relocate/{n1.id}_{n2.id}",
+                                ]
+                            ),
                         )
                     )
 
@@ -275,7 +284,11 @@ class LocalSearchSolver(ISolver):
                     neighbors.append(
                         Neighbor(
                             solution=new_solution_2,
-                            move_key=f"relocate/{n2.id}_{n1.id}",
+                            move_keys=set(
+                                [
+                                    f"relocate/{n2.id}_{n1.id}",
+                                ]
+                            ),
                         )
                     )
 
