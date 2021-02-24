@@ -3,18 +3,27 @@ run_name: "test"
 exit_on_invalid: true
 
 dataset:
-  cls: cvrp.dataset.xml.XmlDirDataset
+  cls: cvrp.dataset.xml.XmlDataset
   kwargs:
-    dir: data/augerat-1995-A
+    paths:
+      - data/christofides-1979/CMT01.xml
 
 solver:
   cls: cvrp.solver.ls.solve.LocalSearchSolver
   kwargs:
-    max_iters: 300
-    early_stop: 10
+    restarts: 2
+    short_term_max_iters: 300
+    short_term_early_stop: 20
+    divers_max_iters: 300
+    divers_early_stop: 30
+    intens_max_iters: 300
+    intens_early_stop: 10
     timeout_s: 900
-    max_neighbor_size: 2000
-    tabu_size: 300
+    max_neighbor_size: 3000
+    elite_set_size: 10
+    short_term_tabu_size: 300
+    divers_tabu_size: 500
+    intens_tabu_size: 200
     operators:
       - relocate
       - 2-opt*

@@ -56,3 +56,8 @@ class TabuList:
                 new_remaining[k] = v
 
         self.__remaining = new_remaining
+
+    def empty(self):
+        self.__list = []
+        self.__index = set()
+        self.__remaining = {}

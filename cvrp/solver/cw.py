@@ -12,8 +12,14 @@ class ClarkeWrightSolver(ISolver):
     Solver using the savings algorithm proposed by Clarke and Wright
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(
+        self, savings_weight: Optional[Dict[Tuple[str, str], float]] = None, **kwargs
+    ) -> None:
         super().__init__(**kwargs)
+
+        if savings_weight is None:
+            savings_weight = {}
+        self.savings_weight = savings_weight
 
     def solve(self, problem: ProblemInstance) -> Optional[ProblemSolution]:
         logger.debug("Generate savings list")
@@ -155,6 +161,10 @@ class ClarkeWrightSolver(ISolver):
                 w2 = problem.get_weight(n2.id, problem.arrive_node_id)
                 w12 = problem.get_weight(n1.id, n2.id)
                 s = w1 + w2 - w12
+
+                # Multiply with custom weight
+                weight = self.savings_weight.get((n1.id, n2.id), 1)
+                s *= weight
                 savings.append((n1.id, n2.id, s))
 
         # Sort the list

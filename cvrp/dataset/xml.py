@@ -2,7 +2,7 @@ from cvrp.model.node import Node
 import os
 import xmltodict
 
-from typing import List
+from typing import List, Optional
 
 from .base import IDataset
 from cvrp.model.problem import ProblemInstance
@@ -27,7 +27,6 @@ class XmlDataset(IDataset):
 
             # Parse the dictionary
             name = instance_d["info"]["name"]
-            vehicle_count = XmlDataset.parse_vehicle_count(name)
             vehicle_capacity = float(instance_d["fleet"]["vehicle_profile"]["capacity"])
             depart_node_id = instance_d["fleet"]["vehicle_profile"]["departure_node"]
             arrive_node_id = instance_d["fleet"]["vehicle_profile"]["arrival_node"]
@@ -42,14 +41,22 @@ class XmlDataset(IDataset):
             # Construct the node list
             nodes: List[Node] = []
             for node_d in instance_d["network"]["nodes"]["node"]:
-                quantity = request_map.get(node_d["@id"], 0.)
+                quantity = request_map.get(node_d["@id"], 0.0)
                 node = Node(
-                    id=node_d["@id"],
-                    cx=node_d["cx"],
-                    cy=node_d["cy"],
-                    demand=quantity
+                    id=node_d["@id"], cx=node_d["cx"], cy=node_d["cy"], demand=quantity
                 )
                 nodes.append(node)
+
+            vehicle_count = XmlDataset.parse_vehicle_count(name)
+            if vehicle_count is None:
+                vehicle_count = len(
+                    list(
+                        filter(
+                            lambda x: x.id != depart_node_id and x.id != arrive_node_id,
+                            nodes,
+                        )
+                    )
+                )
 
             return ProblemInstance(
                 name=name,
@@ -57,19 +64,22 @@ class XmlDataset(IDataset):
                 vehicle_capacity=vehicle_capacity,
                 depart_node_id=depart_node_id,
                 arrive_node_id=arrive_node_id,
-                nodes=nodes
+                nodes=nodes,
             )
 
     @staticmethod
-    def parse_vehicle_count(name: str) -> int:
-        if "_" in name:
-            # Handle edge case for Li dataset
-            num_ = int(name.split("_")[-1])
-            return num_
+    def parse_vehicle_count(name: str) -> Optional[int]:
+        try:
+            if "_" in name:
+                # Handle edge case for Li dataset
+                num_ = int(name.split("_")[-1])
+                return num_
 
-        comp = name.split("-")[-1]
-        num = comp[1:]
-        return int(num)
+            comp = name.split("-")[-1]
+            num = comp[1:]
+            return int(num)
+        except ValueError:
+            return None
 
 
 class XmlDirDataset(XmlDataset):
@@ -77,7 +87,7 @@ class XmlDirDataset(XmlDataset):
         names = os.listdir(dir)
 
         # Filter by extension
-        names = list(filter(lambda x: x.endswith('.xml'), names))
+        names = list(filter(lambda x: x.endswith(".xml"), names))
         paths = [os.path.join(dir, x) for x in names]
 
         super().__init__(paths)

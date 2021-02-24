@@ -24,10 +24,7 @@ class ExactPulpSolver(ISolver):
 
         super().__init__(logdir)
 
-    def convert_solution(self, lp_prob: LpProblem) -> ProblemSolution:
-        raise NotImplementedError
-
-    def convert_solution_2(
+    def convert_solution(
         self, lp_prob: LpProblem, problem: ProblemInstance
     ) -> ProblemSolution:
         routes = []
@@ -72,7 +69,7 @@ class ExactPulpSolver(ISolver):
 
     def solve(self, problem: ProblemInstance) -> Optional[ProblemSolution]:
         logger.debug("Modeling")
-        lp_prob = self.model_problem_2(problem)
+        lp_prob = self.model_problem(problem)
 
         log_path = None
         if self.logdir is not None:
@@ -90,10 +87,10 @@ class ExactPulpSolver(ISolver):
             return None
 
         logger.debug("Converting")
-        solution = self.convert_solution_2(lp_prob, problem)
+        solution = self.convert_solution(lp_prob, problem)
         return solution
 
-    def model_problem_2(self, problem: ProblemInstance) -> LpProblem:
+    def model_problem(self, problem: ProblemInstance) -> LpProblem:
         """
         Creates problem model according to the second formulation in
         """
@@ -175,100 +172,6 @@ class ExactPulpSolver(ISolver):
                 s = c1 + c2 - c
                 vars.append(s * x)
         prob += pulp.lpSum(vars)
-        return prob
-
-    def model_problem(self, problem: ProblemInstance) -> LpProblem:
-        num_nodes = problem.num_nodes
-
-        prob = LpProblem("CVRP", pulp.LpMinimize)
-        X, C, D = [], [], []
-        target_nodes = set([problem.arrive_node_id, problem.depart_node_id])
-
-        # Generate vars and constants
-        for i, n1 in enumerate(problem.nodes):
-            d = n1.demand
-            D.append(d)
-            for j, n2 in enumerate(problem.nodes):
-                if n1.id == n2.id:
-                    continue
-
-                c = problem.get_weight(n1.id, n2.id)
-                C.append(c)
-
-                for r in range(problem.vehicle_count):
-                    x = LpVariable(f"x_{r}_{n1.id}_{n2.id}", cat=pulp.LpBinary)
-                    X.append(x)
-
-        # Each location is visited exactly once
-        for j, n2 in enumerate(problem.nodes):
-            sums = []
-            if n2.id in (target_nodes):
-                continue
-            for i, n1 in enumerate(problem.nodes):
-                if i == j:
-                    continue
-                vars = []
-                for r in range(problem.vehicle_count):
-                    x_name = f"x_{r}_{n1.id}_{n2.id}"
-                    x = next(filter(lambda v: v.name == x_name, X))
-                    vars.append(x)
-                sum = pulp.lpSum(vars)
-                sums.append(sum)
-            total_sum = lpSum(sums)
-            constraint = total_sum == 1
-            prob.add(constraint)
-
-        # Depart and arrive node can only be visited once per route
-        vars_arrive, vars_depart = [], []
-        for n in problem.nodes:
-            if n.id in target_nodes:
-                continue
-            for r in range(problem.vehicle_count):
-                x_name_arrive = f"x_{r}_{n.id}_{problem.arrive_node_id}"
-                x_arrive = next(filter(lambda v: v.name == x_name_arrive, X))
-                vars_arrive.append(x_arrive)
-                x_name_depart = f"x_{r}_{problem.depart_node_id}_{n.id}"
-                x_depart = next(filter(lambda v: v.name == x_name_depart, X))
-                vars_depart.append(x_depart)
-        sum_arrive = lpSum(vars_arrive)
-        sum_depart = lpSum(vars_depart)
-        prob += sum_arrive == 1
-        prob += sum_depart == 1
-
-        # Flow constraint. Total out equals total in
-        for r in range(problem.vehicle_count):
-            for j, n2 in enumerate(problem.nodes):
-                if n2.id in target_nodes:
-                    continue
-                vars1, vars2 = [], []
-                for i, n1 in enumerate(problem.nodes):
-                    if n1.id == n2.id or n1.id in target_nodes:
-                        continue
-                    x1_name = f"x_{r}_{n1.id}_{n2.id}"
-                    x1 = next(filter(lambda v: v.name == x1_name, X))
-                    vars1.append(x1)
-                    x2_name = f"x_{r}_{n2.id}_{n1.id}"
-                    x2 = next(filter(lambda v: v.name == x2_name, X))
-                    vars2.append(x2)
-                sum1 = lpSum(vars1)
-                sum2 = lpSum(vars2)
-                prob += sum1 == sum2
-
-        # Capacity constraint
-        for r in range(problem.vehicle_count):
-            vars = []
-            for i, n1 in enumerate(problem.nodes):
-                if n1.id in target_nodes:
-                    continue
-                for j, n2 in enumerate(problem.nodes):
-                    if n1.id == n2.id or n2.id in target_nodes:
-                        continue
-                    x_name = f"x_{r}_{n1.id}_{n2.id}"
-                    x = next(filter(lambda v: v.name == x_name, X))
-                    vars.append(x * n2.demand)
-            sum = pulp.lpSum(vars)
-            prob += sum <= problem.vehicle_capacity
-
         return prob
 
 

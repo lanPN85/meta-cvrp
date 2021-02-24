@@ -1,3 +1,5 @@
+download-data:
+	$(MAKE) -C data/
 
 # CSV files containing table data
 report/data/cost_augA_1.csv:
@@ -14,18 +16,18 @@ report/data/cost_augB_1.csv:
 		-i2 results/LS_augerat_B/ \
 		-i3 results/CBC_augerat_B/
 
-clean-data:
+clean-report-data:
 	rm report/data/*
 
-build-data:
+build-report-data:
 	$(MAKE) \
 		report/data/cost_augA_1.csv \
 		report/data/cost_augB_1.csv
 
-rebuild-data: clean-data
+rebuild-report-data: clean-data
 	$(MAKE) build-data
 
 report: build-data
 	$(MAKE) -C report/
 
-.PHONY: report rebuild-data build-data clean-data
+.PHONY: report rebuild-report-data build-report-data clean-report-data download-data
