@@ -1,0 +1,28 @@
+run_name: "LS_golden"
+
+exit_on_invalid: true
+
+dataset:
+  cls: cvrp.dataset.xml.XmlDirDataset
+  kwargs:
+    dir: data/golden-1998
+
+solver:
+  cls: cvrp.solver.ls.solve.LocalSearchSolver
+  kwargs:
+    restarts: 2
+    short_term_max_iters: 500
+    short_term_early_stop: 40
+    divers_max_iters: 500
+    divers_early_stop: 50
+    intens_max_iters: 500
+    intens_early_stop: 20
+    max_neighbor_size: 4000
+    elite_set_size: 10
+    short_term_tabu_size: 400
+    divers_tabu_size: 500
+    intens_tabu_size: 200
+    operators:
+      - relocate
+      - 2-opt*
+      - or-opt

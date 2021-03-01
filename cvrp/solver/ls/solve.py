@@ -165,7 +165,7 @@ class LocalSearchSolver(ISolver):
         }
 
         logger.debug("Using CW for initial solution")
-        init_solver = ClarkeWrightSolver()
+        init_solver = ClarkeWrightSolver(savings_weight=self.random_cw_weights(problem))
         initial = init_solver.solve(problem)
 
         if initial is None:
@@ -326,8 +326,6 @@ class LocalSearchSolver(ISolver):
         state.tabu_list.retain = random.randrange(
             self.tabu_expire_min, self.tabu_expire_max
         )
-        iter_best_fitness = float("inf")
-        iter_best_cand = None
 
         logger.info(f"Iter {iter}. Best fitness: {state.best_fitness}")
         logger.debug("Creating neighbors")
@@ -350,18 +348,24 @@ class LocalSearchSolver(ISolver):
         neighbors = list(filter(_is_not_tabu, neighbors))
         logger.debug(f"Filtered neighborhood size: {len(neighbors)}")
 
-        # Add neighbors to tabu list
-        logger.debug("Updating tabu list")
-        state.tabu_list.add_sets([n.move_keys for n in neighbors])
         state.tabu_list.step()
 
-        candidates = [n.solution for n in neighbors]
-
-        for cand in candidates:
+        iter_best_fitness = float("inf")
+        iter_best_cand = None
+        iter_best_neighbor = None
+        for n in neighbors:
+            cand = n.solution
             fitness = cand.total_cost(problem)
             if fitness < iter_best_fitness:
                 iter_best_fitness = fitness
                 iter_best_cand = cand
+                iter_best_neighbor = n
+
+            # Update tabu list
+            state.tabu_list.add_all(list(n.move_keys))
+
+        if iter_best_neighbor is not None:
+            state.tabu_list.add_all(list(iter_best_neighbor.move_keys))
 
         if iter_best_cand is not None:
             state.current_fitness = iter_best_fitness
@@ -468,28 +472,31 @@ class LocalSearchSolver(ISolver):
             for j, route2 in enumerate(solution.routes[i:]):
                 d2 = route2.total_demand()
                 for k, n1 in enumerate(route1.nodes[1:-1]):
-                    for l, n2 in enumerate(route2.nodes[1:-1]):
-                        # Check if the swap still maintains total demand constraint
-                        exceed_1 = d1 - n1.demand + n2.demand > problem.vehicle_capacity
-                        exceed_2 = d2 - n2.demand + n1.demand > problem.vehicle_capacity
-                        if exceed_1 or exceed_2:
-                            continue
+                    # Get a random node from route2
+                    l = random.sample(list(range(1, len(route2.nodes) - 1)), 1)[0]
+                    n2 = route2.nodes[l]
 
-                        # Swap n1 and n2 to the other's route
-                        new_solution = solution.copy(deep=True)
-                        new_route1 = new_solution.routes[i]
-                        new_route2 = new_solution.routes[i + j]
-                        new_route1.nodes[k + 1] = n2
-                        new_route2.nodes[l + 1] = n1
+                    # Check if the swap still maintains total demand constraint
+                    exceed_1 = d1 - n1.demand + n2.demand > problem.vehicle_capacity
+                    exceed_2 = d2 - n2.demand + n1.demand > problem.vehicle_capacity
+                    if exceed_1 or exceed_2:
+                        continue
 
-                        id_list = sorted([n1.id, n2.id])
-                        id_str = "_".join(id_list)
-                        neighbors.append(
-                            Neighbor(
-                                solution=new_solution,
-                                move_keys=set([f"2opt*/{n1.id}", f"2opt*/{n2.id}"]),
-                            )
+                    # Swap n1 and n2 to the other's route
+                    new_solution = solution.copy(deep=True)
+                    new_route1 = new_solution.routes[i]
+                    new_route2 = new_solution.routes[i + j]
+                    new_route1.nodes[k + 1] = n2
+                    new_route2.nodes[l + 1] = n1
+
+                    id_list = sorted([n1.id, n2.id])
+                    id_str = "_".join(id_list)
+                    neighbors.append(
+                        Neighbor(
+                            solution=new_solution,
+                            move_keys=set([f"2opt*/{n1.id}", f"2opt*/{n2.id}"]),
                         )
+                    )
 
         return neighbors
 
@@ -499,47 +506,64 @@ class LocalSearchSolver(ISolver):
         neighbors: List[Neighbor] = []
 
         for r, route in enumerate(solution.routes):
-            # For each route, iterate each node pair and move n1 next to n2
+            if len(route.nodes) < 4:
+                continue
+
+            # For each route, select a node pair and move n1 next to n2
             for i, n1 in enumerate(route.nodes[:-1]):
                 if i == 0:
                     continue
-                for j, n2 in enumerate(route.nodes[:-1]):
-                    if j == 0:
-                        continue
-                    if n1.id == n2.id:
-                        continue
-                    if abs(i - j) == 1:
-                        # Skip adjacent nodes
-                        continue
 
-                    # Move n1 to before n2
-                    new_solution_1 = solution.copy(deep=True)
-                    new_nodes_1 = new_solution_1.routes[r].nodes
-                    new_nodes_1.insert(j, new_nodes_1.pop(i))
-                    neighbors.append(
-                        Neighbor(
-                            solution=new_solution_1,
-                            move_keys=set(
-                                [
-                                    f"relocate/{n1.id}_{n2.id}",
-                                ]
-                            ),
-                        )
-                    )
+                indices = list(range(1, len(route.nodes) - 1))
+                indices.remove(i)
+                if i < len(route.nodes) - 2:
+                    indices.remove(i + 1)
+                if i > 1:
+                    indices.remove(i - 1)
+                j = random.sample(indices, 1)[0]
+                n2 = route.nodes[j]
 
-                    # Move n1 to after n2
-                    new_solution_2 = solution.copy(deep=True)
-                    new_nodes_2 = new_solution_2.routes[r].nodes
-                    new_nodes_2.insert(j, new_nodes_2.pop(i))
-                    neighbors.append(
-                        Neighbor(
-                            solution=new_solution_2,
-                            move_keys=set(
-                                [
-                                    f"relocate/{n2.id}_{n1.id}",
-                                ]
-                            ),
-                        )
+                # Move n1 to before n2
+                new_solution_1 = solution.copy(deep=True)
+                new_nodes_1 = new_solution_1.routes[r].nodes
+                new_nodes_1.insert(j, new_nodes_1.pop(i))
+                neighbors.append(
+                    Neighbor(
+                        solution=new_solution_1,
+                        move_keys=set(
+                            [
+                                f"relocate/{n1.id}_{n2.id}",
+                            ]
+                        ),
                     )
+                )
+
+                # Move n1 to after n2
+                new_solution_2 = solution.copy(deep=True)
+                new_nodes_2 = new_solution_2.routes[r].nodes
+                new_nodes_2.insert(j, new_nodes_2.pop(i))
+                neighbors.append(
+                    Neighbor(
+                        solution=new_solution_2,
+                        move_keys=set(
+                            [
+                                f"relocate/{n2.id}_{n1.id}",
+                            ]
+                        ),
+                    )
+                )
 
         return neighbors
+
+    @staticmethod
+    def random_cw_weights(problem: ProblemInstance) -> Dict[Tuple[str, str], float]:
+        weights: Dict[Tuple[str, str], float] = {}
+
+        for n1 in problem.nodes:
+            for n2 in problem.nodes:
+                if n2.id == n1.id:
+                    continue
+                v = random.uniform(0.0, 1.0)
+                weights[(n1.id, n2.id)] = v
+
+        return weights
