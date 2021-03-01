@@ -10,9 +10,9 @@ dataset:
 solver:
   cls: cvrp.solver.ls.solve.LocalSearchSolver
   kwargs:
-    restarts: 2
+    restarts: 0
     short_term_max_iters: 500
-    short_term_early_stop: 40
+    short_term_early_stop: 30
     divers_max_iters: 500
     divers_early_stop: 50
     intens_max_iters: 500

@@ -6,22 +6,22 @@ dataset:
   cls: cvrp.dataset.xml.XmlDataset
   kwargs:
     paths:
-      - data/christofides-1979/CMT01.xml
+      - data/golden-1998/Golden_20.xml
 
 solver:
+  solver:
   cls: cvrp.solver.ls.solve.LocalSearchSolver
   kwargs:
-    restarts: 2
-    short_term_max_iters: 300
-    short_term_early_stop: 20
-    divers_max_iters: 300
-    divers_early_stop: 30
-    intens_max_iters: 300
-    intens_early_stop: 10
-    timeout_s: 900
-    max_neighbor_size: 3000
+    restarts: 0
+    short_term_max_iters: 500
+    short_term_early_stop: 30
+    divers_max_iters: 500
+    divers_early_stop: 50
+    intens_max_iters: 500
+    intens_early_stop: 20
+    max_neighbor_size: 4000
     elite_set_size: 10
-    short_term_tabu_size: 300
+    short_term_tabu_size: 400
     divers_tabu_size: 500
     intens_tabu_size: 200
     operators:
