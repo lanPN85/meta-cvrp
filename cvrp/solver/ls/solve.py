@@ -473,8 +473,8 @@ class LocalSearchSolver(ISolver):
                 d2 = route2.total_demand()
                 for k, n1 in enumerate(route1.nodes[1:-1]):
                     # Get a random node from route2
-                    l = random.sample(list(range(1, len(route2.nodes) - 1)), 1)[0]
-                    n2 = route2.nodes[l]
+                    l = random.sample(list(range(1, len(route2.nodes) - 1)), 1)[0] - 1
+                    n2 = route2.nodes[l + 1]
 
                     # Check if the swap still maintains total demand constraint
                     exceed_1 = d1 - n1.demand + n2.demand > problem.vehicle_capacity
@@ -506,7 +506,7 @@ class LocalSearchSolver(ISolver):
         neighbors: List[Neighbor] = []
 
         for r, route in enumerate(solution.routes):
-            if len(route.nodes) < 4:
+            if len(route.nodes) < 6:
                 continue
 
             # For each route, select a node pair and move n1 next to n2
