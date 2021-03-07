@@ -1,0 +1,200 @@
+\documentclass[9pt]{beamer}
+% Created By Gouthaman KG
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% Use roboto Font (recommended)
+\usepackage[sfdefault]{roboto}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% Define where theme files are located. ('/styles')
+\usepackage{styles/fluxmacros}
+\usefolder{styles}
+% Use Flux theme v0.1 beta
+% Available style: asphalt, blue, red, green, gray
+\usetheme[style=asphalt]{flux}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% Extra packages for the demo:
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{colortbl}
+\usepackage{ragged2e}
+\usepackage{schemabloc}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    urlcolor=purple,
+    linkcolor=.
+}
+
+\usepackage{caption,subcaption}
+\usebackgroundtemplate{
+\includegraphics[width=\paperwidth,height=\paperheight]{images/background.jpg}}
+\setbeamertemplate{caption}[numbered]
+
+% Informations
+\title{Project presentation}
+\subtitle{Applying tabu search to the capacitated vehicle routing problem}
+
+\author{Phan Ngoc Lan}
+\institute{Hanoi University of Science and Technology}
+\titlegraphic{images/hust.png} %change this to your preferred logo or image(the image is located on the top right corner).
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{document}
+\AtBeginSection[]{
+    \begin{frame}<beamer>
+        \frametitle{Outline}
+        \tableofcontents[currentsection]
+    \end{frame}
+}
+
+% Generate title page
+\titlepage
+
+\begin{frame}
+ \frametitle{Table of contents}
+ \tableofcontents
+\end{frame}
+
+\section{The capacitated vehicle routing problem}
+\begin{frame}{Vehicle routing problems}
+\begin{block}{}
+    What is the optimal set of routes for a fleet of vehicles to traverse in order to deliver to a given set of customers?
+\end{block}
+
+Proposed by Dantzig and Ramser, vehicle routing problems (VRP) occur naturally in multiple fields, most notably transportation and logistics.
+
+There are many variants of the VRP:
+\begin{itemize}
+    \item Capacitated Vehicle Routing Problem (CVRP)
+    \item Vehicle Routing Problem with Time Windows (VRPTW)
+    \item Vehicle Routing Problem with Profits (VRPP)
+    \item etc,\dots
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Capacitated vehicle routing}
+The capacitated vehicle routing problem (CVRP) is one of the most basic and well-studied variant of VRP.
+
+Each customer has a demand index that needs to be fulfilled. Each vehicle has a capacity for service.
+\end{frame}
+
+\begin{frame}{Mathematical formulation}
+The mathematical formulation for CVRP is modified from TSP:
+
+\begin{equation}
+    min \sum_{i \in V} \sum_{j \in V} c_{ij}x_{ij}
+\end{equation}
+subject to
+\begin{align}
+    \sum_{i \in V} x_{ij} & = 1 \ \forall j \in V \backslash \{0\} \\
+    \sum_{j \in V} x_{ij} & = 1 \ \forall i \in V \backslash \{0\} \\
+    \sum_{i \in V} x_{i0} & = K \\
+    \sum_{j \in V} x_{0j} & = K \\
+    \sum_{i \notin S} \sum_{j \in S} x_{ij} & \geq r(S), \forall S \subseteq V \backslash \{0\},\ S \neq \emptyset\\
+    x_{ij} & \in \{ 0, 1 \} \forall i,j \in V
+\end{align}
+
+\end{frame}
+
+\section{Related works}
+\begin{frame}{Related works}
+
+\end{frame}
+
+\section{Tabu search}
+\begin{frame}{Overview}
+Tabu search is a local search paradigm that uses memory structures to prevent the search from visiting previous solutions.
+
+Proposed by Glover and Hansen in 1986.
+
+Full tabu search includes 3 phases:
+\begin{itemize}
+    \item Short-term: Search using tabu list starting from the initial solution
+    \item Intensification: A good solution is selected and the search focuses on this solution's neighborhood
+    \item Diversification: The search explores a different area in the search space to find better solutions
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SimpleTabu for CVRP}
+
+\end{frame}
+
+\begin{frame}{SimpleTabu - Initialization}
+    The initial solution is generated using the Clarke-Wright greedy algorithm (savings algorithm). Each edge $(i, j)$ is assigned a savings value, which is the amount of cost that can be saved by joining the routes $0, i, 0$ and $0, j, 0$. Edges are then greedily joined from the highest weighted edge to the lowest.
+
+    The savings algorithm is deterministic. To add randomness, we can shuffle the savings list or assign random weight to each edge's savings value.
+
+    SimpleTabu initializes a solution by randomizing the Clarke-Wright algorithm.
+\end{frame}
+
+\begin{frame}{SimpleTabu - Exploration}
+
+\end{frame}
+
+\begin{frame}{SimpleTabu - Intensification}
+
+\end{frame}
+
+\begin{frame}{SimpleTabu - Diversification}
+
+\end{frame}
+
+\section{Experiments}
+\begin{frame}{Experiment settings}
+2 experiments are performed:
+\begin{enumerate}
+    \item Ablation study: 4 variations of SimpleTabu with different operators are compared
+    \item Comparison: SimpleTabu is compared with ALNS (large neighborhood search) and GRELS (genetic algorithm + local search)
+\end{enumerate}
+
+All experiments use the Christofides et al. 1979 dataset. Includes 14 instances of medium size.
+
+Results for \href{http://www.vrp-rep.org/references/item/pisinger-and-ropke-2007.html}{ALNS} and \href{http://www.vrp-rep.org/references/item/prins-2009.html}{GRELS} are reported at VRP-REP.
+
+SimpleTabu is implemented in Python3. Experiments are run using the PyPy runtime on a 2-core AMD EPYC 2.2Ghz CPU with 4GB RAM.
+\end{frame}
+
+\begin{frame}{Ablation study - Results}
+\input{tables/compare_cmt_abl.tex}
+\end{frame}
+
+\begin{frame}{Ablation study - Discussion}
+
+\end{frame}
+
+\begin{frame}{Comparison - Results}
+\input{tables/compare_cmt_others.tex}
+\end{frame}
+
+\begin{frame}{Comparison - Discussion}
+
+\end{frame}
+
+\begin{frame}{Convergence analysis}
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{images/converge_1.jpg}
+        \caption{CMT07}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{images/converge_2.jpg}
+        \caption{CMT12}
+    \end{subfigure}
+    \caption{Sample convergence charts for SimpleTabu}
+\end{figure}
+\end{frame}
+
+\section{Conclusion}
+\begin{frame}{Conclusion}
+
+\end{frame}
+
+\end{document}

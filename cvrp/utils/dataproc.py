@@ -38,10 +38,11 @@ def get_runs_dataframe(dirs: List[str], method: str) -> pd.DataFrame:
         summary_path = os.path.join(d, "summary.yml")
         with open(summary_path, "rt") as f:
             summary = yaml.full_load(f)
-            fitness.append(summary["total_cost"])
-            runtime.append(summary["runtime_ms"])
-            names.append(summary["instance_name"])
-            methods.append(method)
+            for inst in summary["summary"]:
+                fitness.append(inst["total_cost"])
+                runtime.append(inst["runtime_ms"])
+                names.append(inst["instance_name"])
+                methods.append(method)
 
     return pd.DataFrame(
         {"fitness": fitness, "runtime": runtime, "name": names, "method": methods}
@@ -60,7 +61,7 @@ def parse_result_csv(path: str) -> pd.DataFrame:
         for row in reader:
             for i, hm in enumerate(h_methods):
                 names.append(row[0])
-                fitness.append(row[i + 1])
+                fitness.append(float(row[i + 1]))
                 methods.append(hm)
 
     return pd.DataFrame({"fitness": fitness, "name": names, "method": methods})

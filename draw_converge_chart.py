@@ -64,7 +64,6 @@ def main():
     )
 
     sns.lineplot(data=fitness_df)
-    plt.title(f"Convergence plot for instance {args.name}")
     plt.xlabel("Iteration")
     plt.ylabel("Fitness")
     plt.savefig(args.o, dpi=800)
