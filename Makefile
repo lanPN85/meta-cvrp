@@ -33,10 +33,15 @@ report/images/converge_2.jpg:
 		-i results/LS_cmt/version_1/summary.yml \
 		-n CMT12 -r 0 -o $@
 
+report/images/runtime_cmt.jpg:
+	./draw_runtime_chart.py \
+		-d cmt -o $@
+
 build-images:
 	$(MAKE) \
 		report/images/converge_1.jpg \
-		report/images/converge_2.jpg
+		report/images/converge_2.jpg \
+		report/images/runtime_cmt.jpg
 
 report: build-tables build-images
 	$(MAKE) -C report/
