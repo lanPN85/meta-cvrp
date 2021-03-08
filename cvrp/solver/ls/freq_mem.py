@@ -27,6 +27,6 @@ class FrequencyMemory:
         total = sum(values)
         penalty = {}
         for k in self._delegate.keys():
-            penalty[k] = self._delegate[k] / total
+            penalty[k] = 1 - self._delegate[k] / total
 
         return penalty

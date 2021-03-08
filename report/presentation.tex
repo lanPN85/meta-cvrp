@@ -66,7 +66,7 @@
     What is the optimal set of routes for a fleet of vehicles to traverse in order to deliver to a given set of customers?
 \end{block}
 
-Proposed by Dantzig and Ramser, vehicle routing problems (VRP) occur naturally in multiple fields, most notably transportation and logistics.
+Proposed by Dantzig and Ramser \cite{dantzig1959truck}, vehicle routing problems (VRP) occur naturally in multiple fields, most notably transportation and logistics.
 
 There are many variants of the VRP:
 \begin{itemize}
@@ -78,9 +78,9 @@ There are many variants of the VRP:
 \end{frame}
 
 \begin{frame}{Capacitated vehicle routing}
-The capacitated vehicle routing problem (CVRP) is one of the most basic and well-studied variant of VRP.
+The capacitated vehicle routing problem (CVRP) is one of the most basic and well-studied variants of VRP.
 
-Each customer has a demand index that needs to be fulfilled. Each vehicle has a capacity for service.
+Each customer has a demand index that needs to be fulfilled. Each vehicle has a capacity for service. A vehicle cannot satisfy demands exceeding its capacity.
 \end{frame}
 
 \begin{frame}{Mathematical formulation}
@@ -103,12 +103,18 @@ subject to
 
 \section{Related works}
 \begin{frame}{Related works}
+Christofides et al. \cite{christofides1976vehicle} reviewed a number of methods for solving VRP, and presented 3 datasets for the problem.
 
+Reimann et al. \cite{reimann2004d} propsed an ACO-based method for large-scale VRPs
+
+Pisinger et al. \cite{pisinger2007general} proposed a large neighborhood search method (ALNS) for solving a variety of VRP problems (including CVRP, VRPTW, etc). Different problem types are transformed into the Rich Pickup and Delivery Problem with Time Windows. The search is adaptive, where each iteration selects a "destroy" neighborhood and a "repair" neighborhood to advance the current solution.
+
+Prins et al. \cite{prins2009grasp} proposed $GRASP \times ELS$, a hybrid between the GRASP framework (consisting of multiple restarts and search with mutations) and evolutionary local search (ELS).
 \end{frame}
 
 \section{Tabu search}
 \begin{frame}{Overview}
-Tabu search is a local search paradigm that uses memory structures to prevent the search from visiting previous solutions.
+Tabu search \cite{glover1986future} is a local search paradigm that uses memory structures to prevent the search from visiting previous solutions.
 
 Proposed by Glover and Hansen in 1986.
 
@@ -121,26 +127,77 @@ Full tabu search includes 3 phases:
 \end{frame}
 
 \begin{frame}{SimpleTabu for CVRP}
+    SimpleTabu: A full tabu search to solve CVRP.
 
+    \begin{enumerate}
+        \item \textbf{Initialization}: initializes a solution and long-term memory structures
+        \item \textbf{Short-term phase}: runs the search with tabu constraints. Updates the elite set and frequency matrix at each iteration
+        \item \textbf{Intensification phase}: selects a solution in the elite set as the initial solution. Runs the search with tabu constraints. Updates the elite set and frequency matrix at each iteration
+        \item \textbf{Diversification phase}: generates a diversified solution using the frequency matrix. Runs the search with tabu constraints. Updates the elite set and frequency matrix at each iteration
+    \end{enumerate}
 \end{frame}
 
 \begin{frame}{SimpleTabu - Initialization}
     The initial solution is generated using the Clarke-Wright greedy algorithm (savings algorithm). Each edge $(i, j)$ is assigned a savings value, which is the amount of cost that can be saved by joining the routes $0, i, 0$ and $0, j, 0$. Edges are then greedily joined from the highest weighted edge to the lowest.
 
-    The savings algorithm is deterministic. To add randomness, we can shuffle the savings list or assign random weight to each edge's savings value.
+    The savings algorithm is deterministic. To add randomness, we can shuffle the savings list or assign random weights to each edge's savings value.
 
-    SimpleTabu initializes a solution by randomizing the Clarke-Wright algorithm.
+    SimpleTabu creates the initial solution by randomizing the Clarke-Wright algorithm.
 \end{frame}
 
 \begin{frame}{SimpleTabu - Exploration}
+    Many exploration operators have been proposed for the CVRP:
 
+    \begin{itemize}
+        \item Relocate: Move a location on a single route
+        \item 2-opt*: Swap two locations on two different routes
+        \item Or-opt: Attach a random segment from one route to another route
+        \item Cross-exchange: Swaps two pairs of locations on two different routes
+        \item etc,\dots
+    \end{itemize}
+
+    SimpleTabu uses Relocate, 2-opt* and Or-opt.
+\end{frame}
+
+\begin{frame}{SimpleTabu - Exploration}
+    \begin{figure}[ht]
+        \centering
+        \begin{subfigure}[b]{\linewidth}
+            \centering
+            \includegraphics[width=0.7\textwidth]{images/lsops-relocate.png}
+            \caption{Relocate}
+        \end{subfigure}
+        \begin{subfigure}[b]{0.35\linewidth}
+            \centering
+            \includegraphics[width=0.95\textwidth]{images/lsops-2-opt.png}
+            \caption{2-opt*}
+        \end{subfigure}
+        \begin{subfigure}[b]{0.63\linewidth}
+            \centering
+            \includegraphics[width=0.95\textwidth]{images/lsops-or-opt.png}
+            \caption{Or-opt}
+        \end{subfigure}
+        \caption{Visualizations of local search operators used by SimpleTabu \footnote{Figures based on \cite{mcnabb2015testing}}}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{SimpleTabu - Intensification}
+Each time a solution outperforms the current best solution, it is added to the elite set.
 
+The intensification phase selects a random solution in the elite set to begin the search.
+
+Goal: further explore the area adjacent to a good solution in order to find improvements.
 \end{frame}
 
 \begin{frame}{SimpleTabu - Diversification}
+At each iteration, an edge-frequency matrix $F$ is updated by incrementing the count of each edge that appears in the current solution. Frequently used edges have higher weights.
+
+Before diversification, SimpleTabu generates an inverse weight matrix $IW$, where:
+\begin{equation*}
+    IW_{ij} = 1 - \frac{F_{ij}}{\sum F}
+\end{equation*}
+
+$IW$ is used as the savings weight for the Clarke-Wright algorithm, which creates the initial solution for diversification.
 
 \end{frame}
 
@@ -149,14 +206,14 @@ Full tabu search includes 3 phases:
 2 experiments are performed:
 \begin{enumerate}
     \item Ablation study: 4 variations of SimpleTabu with different operators are compared
-    \item Comparison: SimpleTabu is compared with ALNS (large neighborhood search) and GRELS (genetic algorithm + local search)
+    \item Comparison: SimpleTabu is compared with ALNS (large neighborhood search) and GRELS (GRASPxELS)
 \end{enumerate}
 
 All experiments use the Christofides et al. 1979 dataset. Includes 14 instances of medium size.
 
 Results for \href{http://www.vrp-rep.org/references/item/pisinger-and-ropke-2007.html}{ALNS} and \href{http://www.vrp-rep.org/references/item/prins-2009.html}{GRELS} are reported at VRP-REP.
 
-SimpleTabu is implemented in Python3. Experiments are run using the PyPy runtime on a 2-core AMD EPYC 2.2Ghz CPU with 4GB RAM.
+SimpleTabu is implemented in Python3. Experiments are run using the PyPy \cite{rigo2006pypy} runtime on a 2-core AMD EPYC 2.2Ghz CPU with 4GB RAM.
 \end{frame}
 
 \begin{frame}{Ablation study - Results}
@@ -164,7 +221,13 @@ SimpleTabu is implemented in Python3. Experiments are run using the PyPy runtime
 \end{frame}
 
 \begin{frame}{Ablation study - Discussion}
+Or-opt contributes the least towards finding optimal solutions. Removing or-opt even improves performance on several instances.
 
+2-opt* can slightly increase variance. Removing it makes SimpleTabu more stable on several instances.
+
+Relocate contributes the most to both solution quality and stability. Removing relocate yields the worst performance out of 4 variants, with the highest standard deviation.
+
+Overall, combining all 3 operators yields the best solutions.
 \end{frame}
 
 \begin{frame}{Comparison - Results}
@@ -172,7 +235,9 @@ SimpleTabu is implemented in Python3. Experiments are run using the PyPy runtime
 \end{frame}
 
 \begin{frame}{Comparison - Discussion}
+GRELS performs best among the 3 algorithms, achieving the best solution in 11/14 instances.
 
+SimpleTabu generally performs worse than ANLS and GRELS, however it still achieves the best solution in 3 instances.
 \end{frame}
 
 \begin{frame}{Convergence analysis}
@@ -192,9 +257,24 @@ SimpleTabu is implemented in Python3. Experiments are run using the PyPy runtime
 \end{figure}
 \end{frame}
 
-\section{Conclusion}
-\begin{frame}{Conclusion}
+\section{Conclusions}
+\begin{frame}{Conclusions}
+Tabu search is a powerful metaheuristic for discrete optimization problems.
+A simple implementation like SimpleTabu can still achieve competitive performance.
 
+Selection of exploration operators is crucial for tabu search and local search in general.
+\end{frame}
+
+\begin{frame}{Thank you}
+    \begin{center}
+        \Huge{Thank you for listening!}
+    \end{center}
+\end{frame}
+
+\begin{frame}[allowframebreaks]
+    \frametitle{References}
+    \bibliographystyle{plain}
+    \bibliography{report.bib}
 \end{frame}
 
 \end{document}

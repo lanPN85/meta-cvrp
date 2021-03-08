@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
-from operator import index
 import os
-import sys
-from pandas.core.frame import DataFrame
 import yaml
-import csv
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from loguru import logger
+from pandas.core.frame import DataFrame
 
 
 def main():
