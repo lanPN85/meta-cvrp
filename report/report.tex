@@ -4,6 +4,11 @@
 \usepackage[T1]{fontenc}
 \usepackage{mathpazo}
 \usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{caption,subcaption}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{placeins}
 
 \usepackage{graphicx}
 \graphicspath{{./images}}
@@ -14,7 +19,7 @@
 
 \begin{document}
 
-\begin{titlepage} % Suppresses displaying the page number on the title page and the subsequent page counts as page 1
+\begin{titlepage}
 	\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for horizontal lines, change thickness here
 
 	\center % Centre everything on the page
@@ -78,8 +83,6 @@
 
 	{\large\today} % Date, change the \today to a set date if you want to be precise
 
-
-
 	\vfill % Push the date up 1/4 of the remaining page
 \end{titlepage}
 
@@ -88,6 +91,52 @@
 
 \chapter{Introduction}
 \section{The capacitated vehicle routing problem}
+Vehicle routing problems (VRPs) are some of the most well-studied and widely-applied optimization problems. The first definitions of VRP were presented by Dantzig et al. \cite{dantzig1959truck} in 1959. In general, VRPs seek to find an optimal set of tours for a fleet of vehicles to service a set of customers. Optimality may refer to minimizing costs, or maximizing overall profits. This abstraction covers a wide variety of application domains, including transportation, logistics, operations, etc \dots
+
+Since its conception, a number of variants of the VRP have been proposed through the years. These variants account for different constraints as well as optimization goals. Popular VRP variants include:
+\begin{itemize}
+	\item Capacitated Vehicle Routing Problem (CVRP): vehicles have capacity constraints;
+	\item Vehicle Routing Problem with Time Windows (VRPTW): customers have time windows outside of which they cannot be serviced;
+	\item Vehicle Routing Problem with Profits (VRPP): customers have profit values, and may not be serviced;
+	\item etc \dots
+\end{itemize}
+
+This report focuses on solving the capacitated vehicle routing problem. CVRP is one of the most basic VRP variants. The problem considers a set of $n$ customers, each with a demand value $d_i$. Conversely, each vehicle has a capacity $C$, which is uniform among all vehicles. The CVRP states that no route can have a total demand (the sum of all customers' demands) exceeding the capacity $C$. Vehicle routes always start and end at a pre-determined location, called the depot. We seek a set of $k \leq n$ valid routes such that all customers are serviced \textit{exactly} once, and the total cost is minimized. Commonly, the depot and customer locations are set on a 2D space, where moving from location $A$ to location $B$ incurs a cost equal to the Euclidean distance between $A$ and $B$. Figure \ref{fig:prob_example} shows an example of CVRP input and solution.
+
+\begin{figure}[]
+    \centering
+    \begin{subfigure}[b]{0.49\linewidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{images/cmt01.png}
+        \caption{Problem input}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.49\linewidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{images/cmt01_solution.png}
+        \caption{Example output}
+    \end{subfigure}
+    \caption{Input and example output for CVRP instance CMT01 in the Christofides CMT dataset. The blue node denotes the depot, orange nodes denote customer locations. Visualization made using VRP-REP Mapper \protect\footnotemark }
+	\label{fig:prob_example}
+\end{figure}
+
+\footnotetext{https://vrp-rep.github.io/mapper/}
+
+Formally, the CVRP is defined as:
+
+\begin{equation}
+    min \sum_{i \in V} \sum_{j \in V} c_{ij}x_{ij} \label{eq:form1}
+\end{equation}
+subject to
+\begin{align}
+    \sum_{i \in V} x_{ij} & = 1 \ \forall j \in V \backslash \{0\} \label{eq:form2} \\
+    \sum_{j \in V} x_{ij} & = 1 \ \forall i \in V \backslash \{0\} \label{eq:form3} \\
+    \sum_{i \in V} x_{i0} & = K \label{eq:form4} \\
+    \sum_{j \in V} x_{0j} & = K \label{eq:form5} \\
+    \sum_{i \notin S} \sum_{j \in S} x_{ij} & \geq r(S), \forall S \subseteq V \backslash \{0\},\ S \neq \emptyset \label{eq:form6} \\
+    x_{ij} & \in \{ 0, 1 \} \forall i,j \in V \label{eq:form7}
+\end{align}
+
+
 
 \section{Related works}
 
@@ -100,9 +149,55 @@
 
 \chapter{Experiments and results}
 \section{Experiment settings}
+We shall examine 2 experiments:
+\begin{itemize}
+	\item Ablation study: different combinations of neighborhoods are compared, in order to make conclusions on each neighbor's effectiveness;
+	\item Comparison: SimpleTabu is compared against two existing methods, ALNS \cite{pisinger2007general} and GRELS \cite{prins2009grasp}.
+\end{itemize}
+
+The SimpleTabu algorithm is implemented in Python 3.7, and executed using the PyPy \cite{rigo2006pypy} runtime. All runs are performed on a single 2-core AMD EPYC 2.2Ghz CPU with 4GB RAM.
+
+Experiments are performed using instances from the Christofides et al. dataset \cite{christofides1976vehicle}, which includes 14 CVRP instances of medium size.
+
+Hyperparameters for SimpleTabu are shown in Table \ref{tab:tabu-params}.
+
+\input{tables/params.tex}
 
 \section{Results and discussion}
+\subsection{Ablation study}
+
+\input{tables/compare_cmt_abl.tex}
+
+\subsection{Comparison to existing methods}
+
+\input{tables/compare_cmt_others.tex}
+
+\subsection{Other observations}
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[b]{0.49\linewidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{images/converge_1.jpg}
+        \caption{CMT07}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.49\linewidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{images/converge_2.jpg}
+        \caption{CMT12}
+    \end{subfigure}
+    \caption{Sample convergence charts for SimpleTabu}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{images/runtime_cmt.jpg}
+    \caption{Average execution time over 5 runs for SimpleTabu on the Christofides 1979 dataset}
+\end{figure}
 
 \chapter{Conclusion}
+
+\bibliographystyle{plain}
+\bibliography{report.bib}
 
 \end{document}
