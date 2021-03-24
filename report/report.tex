@@ -1,4 +1,4 @@
-\documentclass{report}
+\documentclass[12pt]{report}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -9,6 +9,8 @@
 \usepackage{multirow}
 \usepackage{amsmath}
 \usepackage{placeins}
+
+\usepackage[margin=1in]{geometry}
 
 \usepackage{graphicx}
 \graphicspath{{./images}}
@@ -121,31 +123,105 @@ This report focuses on solving the capacitated vehicle routing problem. CVRP is 
 
 \footnotetext{https://vrp-rep.github.io/mapper/}
 
-Formally, the CVRP is defined as:
+\section{Formulation}
+Formally, the CVRP is defined as (\cite{borcinova2017two}):
 
 \begin{equation}
-    min \sum_{i \in V} \sum_{j \in V} c_{ij}x_{ij} \label{eq:form1}
+    min \sum_{r=1}^p \sum_{i=0}^n \sum_{j=0, i \neq j}^n c_{ij}x_{rij} \label{eq:form1}
 \end{equation}
 subject to
 \begin{align}
-    \sum_{i \in V} x_{ij} & = 1 \ \forall j \in V \backslash \{0\} \label{eq:form2} \\
-    \sum_{j \in V} x_{ij} & = 1 \ \forall i \in V \backslash \{0\} \label{eq:form3} \\
-    \sum_{i \in V} x_{i0} & = K \label{eq:form4} \\
-    \sum_{j \in V} x_{0j} & = K \label{eq:form5} \\
-    \sum_{i \notin S} \sum_{j \in S} x_{ij} & \geq r(S), \forall S \subseteq V \backslash \{0\},\ S \neq \emptyset \label{eq:form6} \\
-    x_{ij} & \in \{ 0, 1 \} \forall i,j \in V \label{eq:form7}
+    \sum_{r=1}^p \sum_{i=0,i \neq j}^n x_{rij} = 1 \ & \forall j \in \{1, \dots, n\} \label{eq:form2} \\
+    \sum_{j=1}^n x_{r0j} = 1 \ & \forall r \in \{1,\dots,p\} \label{eq:form3} \\
+    \sum_{i=0,i \neq j} x_{rij} = \sum_{i=0} x_{rji} \ & \forall j \in \{1, \dots, n\},\ r \in \{1,\dots,p\} \label{eq:form4} \\
+    \sum_{i=0}^n \sum_{j=1,i \neq j} d_j x_{rij} \leq Q \ & \forall r \in \{1,\dots,p\} \label{eq:form5} \\
+    \sum_{r=1}^p \sum_{i \in S} \sum_{j \in S, i \neq j} x_{rij} \geq |S| - 1 \ & \forall S \subseteq \{1,\dots,n\} \label{eq:form6} \\
+    x_{rij} \in \{ 0, 1 \} \ & \forall i,j \in \{0, \dots, n\},\ r \in \{1,\dots,p\} \label{eq:form7}
 \end{align}
+where
+\begin{itemize}
+	\item $V = \{0, 1, \dots, n\}$ is the set of locations. $0$ is the depot, where vehicles must start and end their routes;
+	\item $p$ is the maximum number of vehicles. If not specified, we can let $p = n$;
+	\item $c_{ij}$ is the cost of including edge $(i, j)$ in a route, or the cost incurred when moving from from $i$ to $j$;
+	\item $x_{rij}$ is the binary variable signifying whether the edge $(i,j)$ is included in route $r$;
+	\item $d_j$ denotes the demand for location $j$;
+	\item $Q$ is the vehicle capacity.
+\end{itemize}
 
+\section{The Clarke-Wright algorithm}
+The Clarke-Wright algorithm, sometimes referred to as the savings algorithm, is a very simple method for generating a valid solution to the CVRP. This is a greedy heuristic that is not optimal, but is often used as the basis for many metaheuristic algorithms.
 
+The Clarke-Wright algorithm defines a savings value for each edge $(i,j)$:
+\[
+	s_{ij} = c_{i0} + c_{0j} - c_{ij}
+\]
 
-\section{Related works}
+An edge's savings value denotes the amount of "cost" that can be saved by replacing two routes, $(0, i, 0)$ and $(0, j, 0)$ with a new route $(0, i, j, 0)$.
+
+The algorithm first calculates the savings for each non-depot edge, then sorts them in a descending order, forming the savings list. $n$ routes are created, each starting at the depot, visits one customer, then returns. Then, the savings list is iterated one-by-one. For each edge $(i, j)$, check for 3 conditions:
+\begin{enumerate}
+	\item $i$ and $j$ must not be on the same route;
+	\item $i$ and $j$ must still be connected to the depot on each of their routes;
+	\item Merging the routes containing $i$ and $j$ will not violate the capacity constraints.
+\end{enumerate}
+
+If all 3 conditions are met, the routes containing $i$ and $j$ are merged, by appending $j$ after $i$ and then returning to the depot.
+
+Each route join in the Clarke-Wright algorithm is guaranteed to improve the solution by the amount of edge savings. However, the greedy ordering is non-optimal, meaning we are likely to skip edges that would otherwise be part of the optimal solution.
 
 \chapter{Tabu search and CVRP}
-\section{Local search}
-
 \section{Tabu search}
 
-\section{Applying tabu search to CVRP}
+\section{SimpleTabu}
+This section describes SimpleTabu, a tabu search for solving the CVRP. SimpleTabu is a full tabu search with 3 phases: short-term, intensification, and diversification.
+
+\begin{itemize}
+	\item The short-term phase performs a search using only the tabu list, excluding previous moves from the search to avoid local minima;
+	\item The intensification phase selects a promising area in the search and explores it further, becoming more lenient with local minima;
+	\item The diversification phase tries to move the search to a new, unexplored area, in order to find more promising solutions.
+\end{itemize}
+
+The search procedure starts with an initial solution. The short-term phase is run first, in which long-term memory objects are updated. Upon termination, a new initial solution is selected to start the intensification phase. After this phase, another initial solution is created for diversification.
+
+\subsection{Initialization}
+SimpleTabu uses the Clarke-Wright algorithm to create its initial solution. However, the original Clarke-Wright algorithm is deterministic, which can hinder a search. A simple way to introduce randomness is adding weights to the savings list. The savings value for each edge can be multiplied with a predetermined weight $w_{ij}$. A randomly generated weight matrix would then allow us to subtly randomize the output without breaking constraints.
+
+\subsection{Neighborhood space}
+The neighborhood space for SimpleTabu is constructed from a combination of neighbor operators. A large number of operators have been proposed for the CVRP, for example as seen in \cite{mcnabb2015testing}. In this report, we examine 3 operators:
+\begin{enumerate}
+	\item Relocate: Move a location on a single route;
+	\item 2-opt*: Swap two locations on two different routes;
+	\item Or-opt: Attach a random segment from one route to another route.
+\end{enumerate}
+
+Figure \ref{fig:operators} further illustrates the above operators.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}[b]{\linewidth}
+		\centering
+		\includegraphics[width=0.7\textwidth]{images/lsops-relocate.png}
+		\caption{Relocate}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.35\linewidth}
+		\centering
+		\includegraphics[width=0.95\textwidth]{images/lsops-2-opt.png}
+		\caption{2-opt*}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.63\linewidth}
+		\centering
+		\includegraphics[width=0.95\textwidth]{images/lsops-or-opt.png}
+		\caption{Or-opt}
+	\end{subfigure}
+	\caption{Visualizations of local search operators used by SimpleTabu}
+	\label{fig:operators}
+\end{figure}
+
+In each search iteration, SimpleTabu generates neighbors using all operators, merges them and samples a fixed-size candidate set from this population.
+
+\subsection{Intensification}
+
+\section{Related works}
 
 \chapter{Experiments and results}
 \section{Experiment settings}
@@ -196,6 +272,7 @@ Hyperparameters for SimpleTabu are shown in Table \ref{tab:tabu-params}.
 \end{figure}
 
 \chapter{Conclusion}
+This report has given a brief overview of Tabu search in the context of solving CVRP, a fundamental discrete optimization problem. We examined SimpleTabu, a basic implementation that, despite its simplicity, has achieved promising results on the popular CMT dataset. This goes further to show that tabu search can be a powerful search strategy for discrete problems. We also saw that the selection of neighbors can be very crucial to a search algorithm's success.
 
 \bibliographystyle{plain}
 \bibliography{report.bib}
