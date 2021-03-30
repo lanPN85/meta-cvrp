@@ -10,11 +10,16 @@
 \usepackage{amsmath}
 \usepackage{placeins}
 
+\usepackage{etoolbox}
+% \patchcmd{\thebibliography}{\chapter*}{\section*}{}{}
+% \makeatletter
+% \patchcmd{\chapter}{\if@openright\cleardoublepage\else\clearpage\fi}{}{}{}
+% \makeatother
+
 \usepackage[margin=1in]{geometry}
 
 \usepackage{graphicx}
 \graphicspath{{./images}}
-
 
 \title{Applying tabu search to the capacitated vehicle routing problem}
 \author{Phan Ngoc Lan}
@@ -88,12 +93,16 @@
 	\vfill % Push the date up 1/4 of the remaining page
 \end{titlepage}
 
+\pagenumbering{gobble}
 \tableofcontents
 \pagebreak
 
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
 \chapter{Introduction}
 \section{The capacitated vehicle routing problem}
-Vehicle routing problems (VRPs) are some of the most well-studied and widely-applied optimization problems. The first definitions of VRP were presented by Dantzig et al. \cite{dantzig1959truck} in 1959. In general, VRPs seek to find an optimal set of tours for a fleet of vehicles to service a set of customers. Optimality may refer to minimizing costs, or maximizing overall profits. This abstraction covers a wide variety of application domains, including transportation, logistics, operations, etc \dots
+Vehicle routing problems (VRPs) are some of the most well-studied and widely-applied optimization problems. The first definitions of VRP were presented by Dantzig et al. \cite{dantzig1959truck} in 1959. In general, VRPs seek to find an optimal set of tours for a fleet of vehicles to service a set of customers. This abstraction covers a wide variety of application domains, including transportation, logistics, operations, etc \dots
 
 Since its conception, a number of variants of the VRP have been proposed through the years. These variants account for different constraints as well as optimization goals. Popular VRP variants include:
 \begin{itemize}
@@ -103,23 +112,24 @@ Since its conception, a number of variants of the VRP have been proposed through
 	\item etc \dots
 \end{itemize}
 
-This report focuses on solving the capacitated vehicle routing problem. CVRP is one of the most basic VRP variants. The problem considers a set of $n$ customers, each with a demand value $d_i$. Conversely, each vehicle has a capacity $C$, which is uniform among all vehicles. The CVRP states that no route can have a total demand (the sum of all customers' demands) exceeding the capacity $C$. Vehicle routes always start and end at a pre-determined location, called the depot. We seek a set of $k \leq n$ valid routes such that all customers are serviced \textit{exactly} once, and the total cost is minimized. Commonly, the depot and customer locations are set on a 2D space, where moving from location $A$ to location $B$ incurs a cost equal to the Euclidean distance between $A$ and $B$. Figure \ref{fig:prob_example} shows an example of CVRP input and solution.
+This report focuses on solving the capacitated vehicle routing problem. CVRP is one of the most basic VRP variants. The problem considers a set of $n$ customers, each with a demand value $d_i$. Conversely, each vehicle has a capacity $C$, which is uniform among all vehicles. The CVRP states that no route can have a total demand (the sum of all customers' demands) exceeding the capacity $C$. Vehicle routes always start and end at a pre-determined location, called the depot. We seek a set of $k \leq n$ valid routes such that all customers are serviced \textit{exactly} once, and the total cost is minimized. Commonly, the depot and customer locations are set on a 2D space, where moving from location $A$ to location $B$ incurs a cost equal to the Euclidean distance between $A$ and $B$.
+% Figure \ref{fig:prob_example} shows an example of CVRP input and solution.
 
-\begin{figure}[]
-    \centering
-    \begin{subfigure}[b]{0.49\linewidth}
-        \centering
-        \includegraphics[width=0.95\textwidth]{images/cmt01.png}
-        \caption{Problem input}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.49\linewidth}
-        \centering
-        \includegraphics[width=0.95\textwidth]{images/cmt01_solution.png}
-        \caption{Example output}
-    \end{subfigure}
-    \caption{Input and example output for CVRP instance CMT01 in the Christofides CMT dataset. The blue node denotes the depot, orange nodes denote customer locations. Visualization made using VRP-REP Mapper \protect\footnotemark }
-	\label{fig:prob_example}
-\end{figure}
+% \begin{figure}[]
+%     \centering
+%     \begin{subfigure}[b]{0.49\linewidth}
+%         \centering
+%         \includegraphics[width=0.95\textwidth]{images/cmt01.png}
+%         \caption{Problem input}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.49\linewidth}
+%         \centering
+%         \includegraphics[width=0.95\textwidth]{images/cmt01_solution.png}
+%         \caption{Example output}
+%     \end{subfigure}
+%     \caption{Input and example output for CVRP instance CMT01 in the Christofides CMT dataset. The blue node denotes the depot, orange nodes denote customer locations. Visualization made using VRP-REP Mapper \protect\footnotemark }
+% 	\label{fig:prob_example}
+% \end{figure}
 
 \footnotetext{https://vrp-rep.github.io/mapper/}
 
@@ -171,6 +181,9 @@ Each route join in the Clarke-Wright algorithm is guaranteed to improve the solu
 
 \chapter{Tabu search and CVRP}
 \section{Tabu search}
+Tabu search \cite{glover1986future} is a local search paradigm that uses memory structures to prevent the search from visiting previous solutions.
+
+The main idea in Tabu search is assuming that local minima can be overcome if the search tolerates non-improving solutions, while ignoring (make tabu) previously visited solutions. This mechanism is implemented using a tabu list, containing solutions that have recently been visited by the search. The search excludes these solutions when considering its next move.
 
 \section{SimpleTabu}
 This section describes SimpleTabu, a tabu search for solving the CVRP. SimpleTabu is a full tabu search with 3 phases: short-term, intensification, and diversification.
@@ -200,15 +213,15 @@ Figure \ref{fig:operators} further illustrates the above operators.
 	\centering
 	\begin{subfigure}[b]{\linewidth}
 		\centering
-		\includegraphics[width=0.7\textwidth]{images/lsops-relocate.png}
+		\includegraphics[width=0.6\textwidth]{images/lsops-relocate.png}
 		\caption{Relocate}
 	\end{subfigure}
-	\begin{subfigure}[b]{0.35\linewidth}
+	\begin{subfigure}[b]{0.3\linewidth}
 		\centering
 		\includegraphics[width=0.95\textwidth]{images/lsops-2-opt.png}
 		\caption{2-opt*}
 	\end{subfigure}
-	\begin{subfigure}[b]{0.63\linewidth}
+	\begin{subfigure}[b]{0.6\linewidth}
 		\centering
 		\includegraphics[width=0.95\textwidth]{images/lsops-or-opt.png}
 		\caption{Or-opt}
@@ -222,7 +235,7 @@ In each search iteration, SimpleTabu generates neighbors using all operators, me
 \subsection{Intensification}
 The intensification phase seeks to further explore a promising search region for quality solutions. We can reasonably assume that the neighborhood space of a good solution can be promising for this phase.
 
-TO select the solution from which intensification begins, SimpleTabu maintains an \textit{elite set}, containing $\lambda$ best solutions in the search so far. At each search iteration (for any phase), if the current solution outperforms a solution in the elite set, it is inserted in the set. Worst solutions are removed from the set, similar to a circular buffer implementation. At the start of intensification, a solution is randomly chosen from the elite set as the initial solution.
+To select the solution from which intensification begins, SimpleTabu maintains an \textit{elite set}, containing $\lambda$ best solutions in the search so far. At each search iteration (for any phase), if the current solution outperforms a solution in the elite set, it is inserted in the set. Worst solutions are removed from the set, similar to a circular buffer implementation. At the start of intensification, a solution is randomly chosen from the elite set as the initial solution.
 
 \subsection{Diversification}
 Diversification seeks to explore a new area of the search space, in order to avoid local minima. Finding this new area can be tricky, as we need to generate a solution as different from all previous solutions as possible. To achieve this, SimpleTabu maintains a frequency matrix for all possible edges that can appear in a solution. We can track the number of times each edge has appeared in a search iteration (in all phases). This frequency is used to control the Clarke-Wright algorithm via an inverse matrix $IW$:
@@ -232,8 +245,8 @@ Diversification seeks to explore a new area of the search space, in order to avo
 
 $IW$ is used as the edge weights, meaning edges that appear more frequently have their savings value decreased more, reducing the likelihood that they are chosen. The solution generated from this procedure is used as the initial solution for diversification.
 
-\subsection{Stop conditions}
-Each phase runs for a maximum number of iterations. Additionally, if a phase fails to improve the solution for too many iterations, we declare that it has converged and stops early.
+% \subsection{Stop conditions}
+% Each phase runs for a maximum number of iterations. Additionally, if a phase fails to improve the solution for too many iterations, we declare that it has converged and stops early.
 
 \section{Related works}
 A vast number of studies have explored methods of solving the CVRP. Cordeau et al. \cite{cordeau2005new} presented a comprehensive survey of various approaches, including local search, evolutionary algorithms and learning-based methods. Reimann et al. \cite{reimann2004d} propsed an ACO-based method for large-scale VRPs. Pisinger et al. \cite{pisinger2007general} proposed a large neighborhood search method (ALNS) for solving a variety of VRP problems (including CVRP, VRPTW, etc). Different problem types are transformed into the Rich Pickup and Delivery Problem with Time Windows. The search is adaptive, where each iteration selects a "destroy" neighborhood and a "repair" neighborhood to advance the current solution. Prins et al. \cite{prins2009grasp} proposed $GRASP \times ELS$, a hybrid between the GRASP framework (consisting of multiple restarts and search with mutations) and evolutionary local search (ELS).
@@ -252,24 +265,16 @@ The SimpleTabu algorithm is implemented in Python 3.7, and executed using the Py
 
 Experiments are performed using instances from the Christofides et al. dataset \cite{christofides1976vehicle}, which includes 14 CVRP instances of medium size.
 
-Hyperparameters for SimpleTabu are shown in Table \ref{tab:tabu-params}.
-
-The implementation of SimpleTabu can be found at: \href{https://github.com/lanPN85/meta-cvrp}{https://github.com/lanPN85/meta-cvrp}
+Hyperparameters for SimpleTabu are shown in Table \ref{tab:tabu-params}. The implementation of SimpleTabu can be found at: \href{https://github.com/lanPN85/meta-cvrp}{https://github.com/lanPN85/meta-cvrp}
 
 \input{tables/params.tex}
-\FloatBarrier
+% \FloatBarrier
 
 \section{Results and discussion}
 \subsection{Ablation study}
-This experiment aims to highlight the effects of each search neighborhood to the final solution. We examine 4 neighborhood variants of SimpleTabu, namely:
-\begin{itemize}
-	\item SimpleTabu with all 3 neighborhoods;
-	\item SimpleTabu without Or-opt;
-	\item SimpleTabu without 2-opt*;
-	\item SimpleTabu without Relocate;
-\end{itemize}
+This experiment aims to highlight the effects of each search neighborhood to the final solution. We examine 4 neighborhood variants of SimpleTabu, namely: SimpleTabu with all 3 neighborhoods; SimpleTabu without Or-opt; SimpleTabu without 2-opt* and SimpleTabu without Relocate.
 
-Results are shown in Table \ref{ tab:compare-abl-cmt }. The full variant performs best in the majority of test instances, showing that a larger, more diverse neighborhood space tends to benefit Tabu search. The no Or-opt variant also performs quite well, achieving the best solutions on 4 instances, while also showing more stability. This implies that Or-opt can produce a lot of randomness to the search, causing more variance in the final result. The no 2-opt* variant produces similar results. Finally, the no Relocate variant is the worst performing on all instances, while also being highly unstable. This shows that Relocate, while a very simple neighborhood, plays a large part in guiding and improving the Tabu search.
+Results are shown in Table \ref{ tab:compare-abl-cmt }. The full variant performs best in the majority of test instances. The no Or-opt variant also performs quite well, achieving the best solutions on 4 instances, while also showing more stability. This implies that Or-opt can produce a lot of randomness to the search, causing more variance in the final result. The no 2-opt* variant produces similar results. Finally, the no Relocate variant is the worst performing on all instances, while also being highly unstable. This shows that Relocate, while a very simple neighborhood, plays a large part in guiding and improving the Tabu search.
 
 \input{tables/compare_cmt_abl.tex}
 
